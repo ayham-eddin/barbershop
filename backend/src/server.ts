@@ -1,6 +1,6 @@
 import morgan from 'morgan';
 import helmet from 'helmet';
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import logger from 'jet-logger';
 import cors from 'cors';
 
@@ -20,31 +20,45 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
- 
 app.use(cors());
 
-if (ENV.NodeEnv === NodeEnvs.Dev) app.use(morgan('dev'));
+if (ENV.NodeEnv === NodeEnvs.Dev) {
+  app.use(morgan('dev'));
+}
+
 if (ENV.NodeEnv === NodeEnvs.Production) {
   // eslint-disable-next-line n/no-process-env
-  if (!process.env.DISABLE_HELMET) app.use(helmet());
+  if (!process.env.DISABLE_HELMET) {
+    app.use(helmet());
+  }
 }
 
 // API Routes
 app.use(Paths.Base, BaseRouter);
 
 /******************************************************************************
- * Global Error Handler (type-safe, no unsafe calls)
+ * 404 (optional but nice)
  ******************************************************************************/
+app.use((_req, res) => {
+  res.status(HttpStatusCodes.NOT_FOUND).json({ error: 'Not found' });
+});
 
-app.use((err: unknown, _req: Request, res: Response) => {
-  // log safely without calling logger.err (avoids no-unsafe-call)
-  if (ENV.NodeEnv !== NodeEnvs.Test.valueOf()) {
-    const msg =
-      err instanceof Error
-        ? err.stack ?? err.message
-        : typeof err === 'string'
-          ? err
-          : JSON.stringify(err);
+/******************************************************************************
+ * Global Error Handler
+ ******************************************************************************/
+app.use((
+  err: unknown,
+  _req: Request,
+  res: Response,
+  _next: NextFunction,
+) => {
+  // explicitly mark _next as intentionally unused
+  void _next;
+
+  const asError = err instanceof Error ? err : new Error(String(err));
+
+  if (ENV.NodeEnv !== NodeEnvs.Test) {
+    const msg = `${asError.name}: ${asError.message}`;
     logger.info(`[ERROR] ${msg}`);
   }
 
@@ -52,9 +66,13 @@ app.use((err: unknown, _req: Request, res: Response) => {
     return res.status(err.status).json({ error: err.message });
   }
 
-  return res
-    .status(HttpStatusCodes.BAD_REQUEST)
-    .json({ error: err instanceof Error ? err.message : 'Bad Request' });
+  if (!res.headersSent) {
+    return res
+      .status(HttpStatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ error: 'Internal server error' });
+  }
+
+  return undefined;
 });
 
 export default app;
