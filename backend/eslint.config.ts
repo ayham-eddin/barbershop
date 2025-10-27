@@ -35,6 +35,7 @@ export default tseslint.config(
   },
   {
     rules: {
+      '@typescript-eslint/no-deprecated': 'off',
       '@typescript-eslint/explicit-member-accessibility': 'warn',
       '@typescript-eslint/no-misused-promises': 0,
       '@typescript-eslint/no-floating-promises': 0,

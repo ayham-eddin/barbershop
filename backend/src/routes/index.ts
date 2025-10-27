@@ -1,9 +1,10 @@
 import { Router } from 'express';
+import AuthRoutes from './authRoutes';
 
-const apiRouter = Router();
+const router = Router();
 
-apiRouter.get('/health', (_req, res) => {
-  res.json({ ok: true });
-});
+router.get('/health', (_req, res) => res.json({ ok: true }));
 
-export default apiRouter;
+router.use('/auth', AuthRoutes);
+
+export default router;
