@@ -1,13 +1,14 @@
 import { Router } from 'express';
-import { validate } from '@src/middleware/validate';
-import { registerSchema, loginSchema }
-  from '@src/routes/validators/authSchemas';
-import { register, login }
-  from '@src/routes/controllers/authController';
+import { validateBody } from '@src/middleware/validate';
+import { 
+  registerSchema, 
+  loginSchema,
+} from '@src/routes/validators/authSchemas';
+import { register, login } from '@src/routes/controllers/authController';
 
-const r = Router();
+const router = Router();
 
-r.post('/register', validate(registerSchema), register);
-r.post('/login', validate(loginSchema), login);
+router.post('/register', validateBody(registerSchema), register);
+router.post('/login', validateBody(loginSchema), login);
 
-export default r;
+export default router;

@@ -3,6 +3,8 @@ import AuthRoutes from './authRoutes';
 import AdminRoutes from './adminRoutes';
 import BarberRoutes from './barberRoutes';
 import BookingRoutes from './bookingRoutes';
+import ServiceRoutes from './serviceRoutes';
+
 import { requireAuth, AuthRequest } from '@src/middleware/requireAuth';
 import { User } from '@src/models/User';
 
@@ -17,6 +19,9 @@ router.use('/admin', AdminRoutes);
 router.use('/barbers', BarberRoutes);
 
 router.use('/bookings', BookingRoutes);
+
+router.use('/services', ServiceRoutes);
+
 
 // GET /api/me (requires JWT)
 router.get('/me', requireAuth, async (req: AuthRequest, res) => {
