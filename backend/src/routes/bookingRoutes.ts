@@ -8,18 +8,28 @@ import {
   adminAllBookings,
 } from './controllers/bookingController';
 import { getAvailableSlots } from '@src/services/scheduling';
+import { validateBody, validateParams } from '@src/middleware/validate';
+import {
+  createBookingSchema,
+  cancelBookingSchema,
+} from './validators/bookingSchemas';
 
 const router = Router();
 
-/** user routes (auth required) */
+/** 🧍 User routes (auth required) */
 router.get('/me', requireAuth, myBookings);
-router.post('/', requireAuth, createBooking);
-router.post('/:id/cancel', requireAuth, cancelBooking);
+router.post('/', requireAuth, validateBody(createBookingSchema), createBooking);
+router.post(
+  '/:id/cancel',
+  requireAuth,
+  validateParams(cancelBookingSchema),
+  cancelBooking,
+);
 
-/** admin view */
+/** 🧑‍💼 Admin view */
 router.get('/admin/all', requireAuth, requireAdmin, adminAllBookings);
 
-/** availability (public) */
+/** 📅 Public availability check (no auth required) */
 router.get('/availability', async (req, res) => {
   const { barberId, date, durationMin } = req.query;
 

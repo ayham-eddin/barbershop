@@ -1,41 +1,23 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import { Schema, model, type Document, Types } from 'mongoose';
 
-export interface ServiceItem {
-  name: string;
-  durationMin: number; // 15–180
-  price: number;       // cents or basic number
+export interface WorkingHour {
+  day: 0|1|2|3|4|5|6;   // 0 = Sunday
+  start: string;        // "09:00"
+  end: string;          // "17:00"
 }
 
-export interface WorkingBlock {
-  // weekday: 0=Sun … 6=Sat
-  day: 0 | 1 | 2 | 3 | 4 | 5 | 6;
-  start: string; // "09:00"
-  end: string;   // "17:30"
-}
-
-export interface BarberDoc extends Document<Types.ObjectId> {
+export interface BarberDoc extends Document {
   name: string;
-  specialties: string[];
-  services: ServiceItem[];
-  workingHours: WorkingBlock[];
-  active: boolean;
+  workingHours: WorkingHour[];
+  services: Types.ObjectId[]; // refs Service
   createdAt: Date;
   updatedAt: Date;
 }
 
-const ServiceSchema = new Schema<ServiceItem>(
-  {
-    name: { type: String, required: true, trim: true },
-    durationMin: { type: Number, required: true, min: 5, max: 480 },
-    price: { type: Number, required: true, min: 0 },
-  },
-  { _id: false },
-);
-
-const WorkingSchema = new Schema<WorkingBlock>(
+const WorkingHourSchema = new Schema<WorkingHour>(
   {
     day: { type: Number, required: true, min: 0, max: 6 },
-    start: { type: String, required: true }, // "HH:mm"
+    start: { type: String, required: true },
     end: { type: String, required: true },
   },
   { _id: false },
@@ -44,10 +26,8 @@ const WorkingSchema = new Schema<WorkingBlock>(
 const BarberSchema = new Schema<BarberDoc>(
   {
     name: { type: String, required: true, trim: true },
-    specialties: { type: [String], default: [] },
-    services: { type: [ServiceSchema], default: [] },
-    workingHours: { type: [WorkingSchema], default: [] },
-    active: { type: Boolean, default: true },
+    workingHours: { type: [WorkingHourSchema], default: [] },
+    services: [{ type: Schema.Types.ObjectId, ref: 'Service' }],
   },
   { timestamps: true },
 );

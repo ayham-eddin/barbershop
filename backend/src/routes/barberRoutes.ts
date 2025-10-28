@@ -1,16 +1,14 @@
 import { Router } from 'express';
-import { requireAuth } from '@src/middleware/requireAuth';
-import { requireAdmin } from '@src/middleware/requireAdmin';
-import * as C from './controllers/barberController';
+import {
+  listBarbers,
+  getBarber,
+  getBarberSlots,
+} from './controllers/barberController';
 
-const r = Router();
+const router = Router();
 
-// public list
-r.get('/', C.listBarbers);
+router.get('/', listBarbers);
+router.get('/:id', getBarber);
+router.get('/:id/slots', getBarberSlots);
 
-// admin CRUD
-r.post('/', requireAuth, requireAdmin, C.createBarber);
-r.patch('/:id', requireAuth, requireAdmin, C.updateBarber);
-r.delete('/:id', requireAuth, requireAdmin, C.deleteBarber);
-
-export default r;
+export default router;
