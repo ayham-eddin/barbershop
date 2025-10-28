@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import AuthRoutes from './authRoutes';
 import AdminRoutes from './adminRoutes';
+import BarberRoutes from './barberRoutes';
+import BookingRoutes from './bookingRoutes';
 import { requireAuth, AuthRequest } from '@src/middleware/requireAuth';
 import { User } from '@src/models/User';
 
@@ -11,6 +13,10 @@ router.get('/health', (_req, res) => res.json({ ok: true }));
 router.use('/auth', AuthRoutes);
 
 router.use('/admin', AdminRoutes);
+
+router.use('/barbers', BarberRoutes);
+
+router.use('/bookings', BookingRoutes);
 
 // GET /api/me (requires JWT)
 router.get('/me', requireAuth, async (req: AuthRequest, res) => {
@@ -25,6 +31,7 @@ router.get('/me', requireAuth, async (req: AuthRequest, res) => {
 
   return res.json({
     user: {
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
       id: String(user._id),
       name: user.name,
       email: user.email,
