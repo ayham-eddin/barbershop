@@ -1,12 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, type AuthTokenPayload } from '@src/utils/auth';
+import { verifyToken } from '@src/utils/auth';
 
 export interface AuthUser {
   sub: string;
   role?: string;
 }
 
-export interface AuthRequest extends Request {
+/**
+ * A typed Request that carries `user` set by the JWT middleware.
+ * B = body, P = route params, Q = query
+ */
+export interface AuthRequest<
+  B = unknown,
+  P = Record<string, string>,
+  Q = Record<string, unknown>
+> extends Request<P, unknown, B, Q> {
   user?: AuthUser;
 }
 
@@ -16,17 +24,13 @@ export function requireAuth(
   next: NextFunction,
 ) {
   const header = req.headers.authorization;
-
-  // use optional chaining (cleaner) + early return
   if (!header?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing token' });
   }
 
-  const token = header.slice(7).trim();
-
+  const token = header.slice(7);
   try {
-    const payload: AuthTokenPayload = verifyToken(token);
-    // narrow to what we store on req
+    const payload = verifyToken(token);
     req.user = { sub: payload.sub, role: payload.role };
     return next();
   } catch {

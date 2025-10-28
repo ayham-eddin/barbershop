@@ -1,10 +1,9 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import { Schema, model, Document } from 'mongoose';
 
 export interface UserDoc extends Document {
-  _id: Types.ObjectId;
   name: string;
   email: string;
-  password: string;          // stored hash
+  passwordHash: string;
   role: 'user' | 'admin';
   createdAt: Date;
   updatedAt: Date;
@@ -20,7 +19,7 @@ const UserSchema = new Schema<UserDoc>(
       lowercase: true,
       trim: true,
     },
-    password: { type: String, required: true },
+    passwordHash: { type: String, required: true },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
   },
   { timestamps: true },

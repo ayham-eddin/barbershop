@@ -1,7 +1,21 @@
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import { User, type UserDoc } from '@src/models/User';
-import { hashPassword, verifyPassword, createToken } from '@src/utils/auth';
-import type { RegisterBody, LoginBody } from '../validators/authSchemas';
+import {
+  hashPassword,
+  verifyPassword,
+  createToken,
+} from '@src/utils/auth';
+import type {
+  RegisterBody,
+  LoginBody,
+} from '../validators/authSchemas';
+
+/** Normalize any mongoose _id to a safe string */
+function idToString(id: unknown): string {
+  if (id instanceof Types.ObjectId) return id.toHexString();
+  return String(id);
+}
 
 // POST /auth/register
 export async function register(
@@ -10,7 +24,8 @@ export async function register(
 ) {
   const { name, email, password } = req.body;
 
-  const exists = await User.exists({ email });
+  // Make `exists` a boolean to satisfy ESLint/TS
+  const exists = Boolean(await User.exists({ email }).lean());
   if (exists) {
     return res.status(409).json({ error: 'Email in use' });
   }
@@ -24,11 +39,12 @@ export async function register(
     role: 'user',
   });
 
-  const token = createToken({ sub: user._id.toString(), role: user.role });
+  const id = idToString(user._id);
+  const token = createToken({ sub: id, role: user.role });
 
   return res.status(201).json({
     user: {
-      id: user._id.toString(),
+      id,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -49,16 +65,17 @@ export async function login(
     return res.status(401).json({ error: 'Invalid login' });
   }
 
-  const ok = await verifyPassword(password, user.password);
+  const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) {
     return res.status(401).json({ error: 'Invalid login' });
   }
 
-  const token = createToken({ sub: user._id.toString(), role: user.role });
+  const id = idToString(user._id);
+  const token = createToken({ sub: id, role: user.role });
 
   return res.json({
     user: {
-      id: user._id.toString(),
+      id,
       name: user.name,
       email: user.email,
       role: user.role,

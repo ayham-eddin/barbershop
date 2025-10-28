@@ -6,10 +6,11 @@ export function requireAdmin(
   res: Response,
   next: NextFunction,
 ) {
-  // requireAuth must have run earlier and attached req.user
   const role = req.user?.role;
+
   if (role !== 'admin') {
     return res.status(403).json({ error: 'Admin only' });
   }
+
   return next();
 }
