@@ -43,21 +43,34 @@ export async function createBooking(
     return;
   }
 
-  const {
-    barberId,
-    serviceName,
-    durationMin,
-    startsAt,
-    notes,
-  } = req.body;
+  const { barberId, serviceName, durationMin, startsAt, notes } = req.body;
+
+  // Basic input validation (defensive, even if you use zod on the route)
+  if (!Types.ObjectId.isValid(barberId)) {
+    res.status(400).json({ error: 'Invalid barberId' });
+    return;
+  }
 
   const starts = new Date(startsAt);
+  if (Number.isNaN(starts.getTime())) {
+    res.status(400).json({ error: 'Invalid startsAt (ISO expected)' });
+    return;
+  }
+
   const dur = durationMin;
+  if (!Number.isFinite(dur) || dur <= 0 || dur > 480) {
+    res.status(400).json({ error: 'Invalid durationMin (1..480)' });
+    return;
+  }
+
   const ends = new Date(starts.getTime() + dur * 60_000);
 
-  // Use countDocuments (typed number) instead of exists (loosely typed)
+  const barberObjId = new Types.ObjectId(barberId);
+  const userObjId = new Types.ObjectId(userId);
+
+  // Prevent overlaps for the same barber (typed number via countDocuments)
   const overlap = await Appointment.countDocuments({
-    barberId: new Types.ObjectId(barberId),
+    barberId: barberObjId,
     status: 'booked',
     startsAt: { $lt: ends },
     endsAt: { $gt: starts },
@@ -69,8 +82,8 @@ export async function createBooking(
   }
 
   const appt = await Appointment.create({
-    userId: new Types.ObjectId(userId),
-    barberId: new Types.ObjectId(barberId),
+    userId: userObjId,
+    barberId: barberObjId,
     serviceName,
     durationMin: dur,
     startsAt: starts,
