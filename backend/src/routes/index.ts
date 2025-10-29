@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import AuthRoutes from './authRoutes';
 import AdminRoutes from './adminRoutes';
+import AdminServiceRoutes from './adminServiceRoutes';
+import AdminBarberRoutes from './adminBarberRoutes';
 import BarberRoutes from './barberRoutes';
 import BookingRoutes from './bookingRoutes';
 import ServiceRoutes from './serviceRoutes';
@@ -16,11 +18,16 @@ router.use('/auth', AuthRoutes);
 
 router.use('/admin', AdminRoutes);
 
+router.use('/admin/services', AdminServiceRoutes);
+
+router.use('/admin/barbers', AdminBarberRoutes);
+
 router.use('/barbers', BarberRoutes);
 
 router.use('/bookings', BookingRoutes);
 
 router.use('/services', ServiceRoutes);
+
 
 
 // GET /api/me (requires JWT)
