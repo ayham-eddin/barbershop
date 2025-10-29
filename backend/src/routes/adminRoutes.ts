@@ -5,7 +5,11 @@ import { z } from 'zod';
 
 import { requireAuth } from '@src/middleware/requireAuth';
 import { requireAdmin } from '@src/middleware/requireAdmin';
-import { validateBody, validateQuery, validateParams } from '@src/middleware/validate';
+import {
+  validateBody,
+  validateQuery,
+  validateParams,
+} from '@src/middleware/validate';
 
 import { User } from '@src/models/User';
 import { TimeOff } from '@src/models/TimeOff';
@@ -57,7 +61,8 @@ admin.post(
   requireAdmin,
   validateBody(timeOffBodySchema),
   async (req: Request, res: Response) => {
-    const { barberId, start, end, reason } = req.body as z.infer<typeof timeOffBodySchema>;
+    const body = req.body as z.infer<typeof timeOffBodySchema>;
+    const { barberId, start, end, reason } = body;
 
     const doc = await TimeOff.create({
       barberId: new Types.ObjectId(barberId),
