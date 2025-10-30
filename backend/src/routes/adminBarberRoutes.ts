@@ -1,5 +1,3 @@
-/* eslint-disable max-len */
-// src/routes/adminBarberRoutes.ts
 import { Router, type Request, type Response } from 'express';
 import { Types } from 'mongoose';
 import { z } from 'zod';

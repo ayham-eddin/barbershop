@@ -51,16 +51,13 @@ app.get('/openapi.yaml', (_req, res) => {
 });
 
 // Narrow, local suppression for swagger-ui-express’ loose types
-/* eslint-disable @typescript-eslint/no-unsafe-member-access,
-                  @typescript-eslint/no-unsafe-call */
+ 
 const swaggerServe: RequestHandler[] =
   (swaggerUi.serve as unknown as RequestHandler[]);
 const swaggerSetup: RequestHandler =
   (swaggerUi.setup(undefined, {
     swaggerOptions: { url: '/openapi.yaml' },
   }) as unknown as RequestHandler);
-/* eslint-enable @typescript-eslint/no-unsafe-member-access,
-                 @typescript-eslint/no-unsafe-call */
 
 app.use('/docs', swaggerServe, swaggerSetup);
 

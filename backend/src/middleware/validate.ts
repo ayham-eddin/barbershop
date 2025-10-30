@@ -1,5 +1,3 @@
-/* eslint-disable max-len */
-// src/middleware/validate.ts
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { type ZodTypeAny } from 'zod';
 
