@@ -8,7 +8,10 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src --ext .ts",
-    "seed": "tsx -r ./src/config/loadEnv.ts scripts/seed.ts"
+    "seed": "tsx -r ./src/config/loadEnv.ts scripts/seed.ts",
+    "test": "jest --runInBand --detectOpenHandles",
+    "test:watch": "jest --watchAll",
+    "test:cov": "jest --coverage"
   },
   "engines": {
     "node": ">=16.0.0"
@@ -40,6 +43,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
+    "@stylistic/eslint-plugin": "^5.5.0",
     "@stylistic/eslint-plugin-js": "^4.4.1",
     "@stylistic/eslint-plugin-ts": "^4.4.1",
     "@swc/core": "^1.13.5",
@@ -47,6 +51,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/find": "^0.2.4",
     "@types/fs-extra": "^11.0.4",
+    "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonfile": "^6.1.4",
     "@types/jsonwebtoken": "^9.0.10",
@@ -60,14 +65,17 @@
     "eslint-plugin-n": "^17.23.1",
     "find": "^0.3.0",
     "fs-extra": "^11.3.2",
+    "jest": "^30.2.0",
     "jiti": "^2.6.1",
+    "mongodb-memory-server": "^10.2.3",
     "nodemon": "^3.1.10",
     "supertest": "^7.1.4",
+    "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.2",
-    "vitest": "^4.0.3"
+    "vitest": "^4.0.5"
   }
 }
