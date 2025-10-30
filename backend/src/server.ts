@@ -1,8 +1,15 @@
 import morgan from 'morgan';
 import helmet from 'helmet';
-import express, { Request, Response, NextFunction } from 'express';
+import express, {
+  type Request,
+  type Response,
+  type NextFunction,
+  type RequestHandler,
+} from 'express';
 import logger from 'jet-logger';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
+import path from 'path';
 
 import BaseRouter from '@src/routes';
 import Paths from '@src/common/constants/Paths';
@@ -33,11 +40,38 @@ if (ENV.NodeEnv === NodeEnvs.Production) {
   }
 }
 
-// API Routes
+/******************************************************************************
+ * OpenAPI / Swagger UI
+ * Serve the YAML statically and let Swagger UI fetch it.
+ ******************************************************************************/
+
+app.get('/openapi.yaml', (_req, res) => {
+  const filePath = path.join(process.cwd(), 'openapi.yaml');
+  res.sendFile(filePath);
+});
+
+// Narrow, local suppression for swagger-ui-express’ loose types
+/* eslint-disable @typescript-eslint/no-unsafe-member-access,
+                  @typescript-eslint/no-unsafe-call */
+const swaggerServe: RequestHandler[] =
+  (swaggerUi.serve as unknown as RequestHandler[]);
+const swaggerSetup: RequestHandler =
+  (swaggerUi.setup(undefined, {
+    swaggerOptions: { url: '/openapi.yaml' },
+  }) as unknown as RequestHandler);
+/* eslint-enable @typescript-eslint/no-unsafe-member-access,
+                 @typescript-eslint/no-unsafe-call */
+
+app.use('/docs', swaggerServe, swaggerSetup);
+
+/******************************************************************************
+ * API Routes
+ ******************************************************************************/
+
 app.use(Paths.Base, BaseRouter);
 
 /******************************************************************************
- * 404 (optional but nice)
+ * 404
  ******************************************************************************/
 app.use((_req, res) => {
   res.status(HttpStatusCodes.NOT_FOUND).json({ error: 'Not found' });
@@ -52,14 +86,12 @@ app.use((
   res: Response,
   _next: NextFunction,
 ) => {
-  // explicitly mark _next as intentionally unused
   void _next;
 
   const asError = err instanceof Error ? err : new Error(String(err));
 
   if (ENV.NodeEnv !== NodeEnvs.Test) {
-    const msg = `${asError.name}: ${asError.message}`;
-    logger.info(`[ERROR] ${msg}`);
+    logger.info(`[ERROR] ${asError.name}: ${asError.message}`);
   }
 
   if (err instanceof RouteError) {

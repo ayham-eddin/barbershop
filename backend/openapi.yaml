@@ -1,0 +1,877 @@
+openapi: 3.1.0
+info:
+  title: Barbershop API
+  version: 1.0.0
+  description: |
+    Backend API for barbershop booking.
+    - JWT Bearer auth for /me, /bookings, /admin/*
+    - Public endpoints for barbers/services/availability
+
+servers:
+  - url: http://localhost:{port}/api
+    description: Local dev
+    variables:
+      port:
+        default: "3000"
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Services
+  - name: Barbers
+  - name: Bookings
+  - name: Admin - TimeOff
+  - name: Admin - Services
+  - name: Admin - Barbers
+  - name: Health
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and obtain JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /me:
+    get:
+      tags: [Users]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/UserPublic"
+                required: [user]
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /services:
+    get:
+      tags: [Services]
+      summary: Public list services
+      responses:
+        "200":
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Service"
+                required: [services]
+
+  /barbers:
+    get:
+      tags: [Barbers]
+      summary: Public list barbers (with populated services)
+      responses:
+        "200":
+          description: List of barbers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  barbers:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Barber"
+                required: [barbers]
+
+  /barbers/{id}:
+    get:
+      tags: [Barbers]
+      summary: Get barber by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ObjectId"
+      responses:
+        "200":
+          description: Barber
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  barber:
+                    $ref: "#/components/schemas/Barber"
+                required: [barber]
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /barbers/{id}/slots:
+    get:
+      tags: [Barbers]
+      summary: Get available slots for a given date and duration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ObjectId"
+        - name: date
+          in: query
+          required: true
+          description: Day to check (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: duration
+          in: query
+          required: true
+          description: Slot length in minutes
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Slots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slots:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Slot"
+                required: [slots]
+        "400":
+          description: Bad query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bookings/me:
+    get:
+      tags: [Bookings]
+      summary: List my bookings
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookings:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Appointment"
+                required: [bookings]
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bookings:
+    post:
+      tags: [Bookings]
+      summary: Create a booking
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking:
+                    $ref: "#/components/schemas/Appointment"
+                required: [booking]
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Time slot not available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bookings/{id}/cancel:
+    post:
+      tags: [Bookings]
+      summary: Cancel my booking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ObjectId"
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking:
+                    $ref: "#/components/schemas/Appointment"
+                required: [booking]
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/users:
+    get:
+      tags: [Users]
+      summary: List users (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserPublic"
+                required: [users]
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/timeoff:
+    get:
+      tags: [Admin - TimeOff]
+      summary: List time-off (optional filter by barberId)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: barberId
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ObjectId"
+      responses:
+        "200":
+          description: Time-off list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timeoff:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TimeOff"
+                required: [timeoff]
+        "400":
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      tags: [Admin - TimeOff]
+      summary: Create time-off block
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTimeOffRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timeoff:
+                    $ref: "#/components/schemas/TimeOff"
+                required: [timeoff]
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/timeoff/{id}:
+    delete:
+      tags: [Admin - TimeOff]
+      summary: Delete time-off by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ObjectId"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    $ref: "#/components/schemas/TimeOff"
+                required: [deleted]
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/services:
+    get:
+      tags: [Admin - Services]
+      summary: List services (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Service"
+                required: [services]
+    post:
+      tags: [Admin - Services]
+      summary: Create service
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    $ref: "#/components/schemas/Service"
+                required: [service]
+
+  /admin/services/{id}:
+    patch:
+      tags: [Admin - Services]
+      summary: Update service
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ObjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceUpdateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    $ref: "#/components/schemas/Service"
+                required: [service]
+    delete:
+      tags: [Admin - Services]
+      summary: Delete service
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ObjectId"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    $ref: "#/components/schemas/Service"
+                required: [deleted]
+
+  /admin/barbers:
+    get:
+      tags: [Admin - Barbers]
+      summary: List barbers (admin, populated services)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Barbers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  barbers:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Barber"
+                required: [barbers]
+    post:
+      tags: [Admin - Barbers]
+      summary: Create barber (minimal)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarberCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  barber:
+                    $ref: "#/components/schemas/Barber"
+                required: [barber]
+
+  /admin/barbers/{id}:
+    get:
+      tags: [Admin - Barbers]
+      summary: Get barber by id (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ObjectId"
+      responses:
+        "200":
+          description: Barber
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  barber:
+                    $ref: "#/components/schemas/Barber"
+                required: [barber]
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      tags: [Admin - Barbers]
+      summary: Update barber (services/working hours/etc.)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ObjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarberUpdateRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  barber:
+                    $ref: "#/components/schemas/Barber"
+                required: [barber]
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ObjectId:
+      type: string
+      description: Mongo ObjectId
+      pattern: "^[0-9a-fA-F]{24}$"
+      example: "650f1c2b3a4d5e6f7b8c9d01"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    ValidationIssue:
+      type: object
+      properties:
+        path:
+          type: string
+        message:
+          type: string
+      required: [path, message]
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Validation error"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationIssue"
+      required: [error, details]
+
+    UserPublic:
+      type: object
+      properties:
+        id:
+          type: string
+          description: User id (stringified ObjectId)
+          example: "650f1c2b3a4d5e6f7b8c9d01"
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [user, admin]
+      required: [id, name, email, role]
+
+    RegisterRequest:
+      type: object
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+      required: [name, email, password]
+
+    LoginRequest:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+      required: [email, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserPublic"
+        token:
+          type: string
+      required: [user, token]
+
+    Service:
+      type: object
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        name: { type: string }
+        durationMin: { type: integer, minimum: 1 }
+        price: { type: number, minimum: 0 }
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [_id, name, durationMin, price]
+
+    ServiceCreateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        durationMin: { type: integer, minimum: 1 }
+        price: { type: number, minimum: 0 }
+      required: [name, durationMin, price]
+
+    ServiceUpdateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        durationMin: { type: integer, minimum: 1 }
+        price: { type: number, minimum: 0 }
+
+    WorkingHour:
+      type: object
+      properties:
+        day:
+          type: integer
+          minimum: 0
+          maximum: 6
+          description: 0=Sunday … 6=Saturday
+        start:
+          type: string
+          example: "09:00"
+        end:
+          type: string
+          example: "17:00"
+      required: [day, start, end]
+
+    Barber:
+      type: object
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        name: { type: string }
+        workingHours:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkingHour"
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/Service"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [_id, name, workingHours, services]
+
+    BarberCreateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        specialties:
+          type: array
+          items: { type: string }
+        workingHours:
+          type: array
+          items: { $ref: "#/components/schemas/WorkingHour" }
+        services:
+          type: array
+          description: List of service ids
+          items: { $ref: "#/components/schemas/ObjectId" }
+        active:
+          type: boolean
+      required: [name]
+
+    BarberUpdateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        specialties:
+          type: array
+          items: { type: string }
+        workingHours:
+          type: array
+          items: { $ref: "#/components/schemas/WorkingHour" }
+        services:
+          type: array
+          description: List of service ids
+          items: { $ref: "#/components/schemas/ObjectId" }
+        active:
+          type: boolean
+
+    Slot:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+      required: [start, end]
+
+    Appointment:
+      type: object
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        userId: { $ref: "#/components/schemas/ObjectId" }
+        barberId: { $ref: "#/components/schemas/ObjectId" }
+        serviceName: { type: string }
+        durationMin: { type: integer, minimum: 1 }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        status:
+          type: string
+          enum: [booked, cancelled]
+        notes:
+          type: string
+      required:
+        [_id, userId, barberId, serviceName, durationMin, startsAt, endsAt, status]
+
+    CreateBookingRequest:
+      type: object
+      properties:
+        barberId: { $ref: "#/components/schemas/ObjectId" }
+        serviceName: { type: string }
+        durationMin: { type: integer, minimum: 1 }
+        startsAt: { type: string, format: date-time }
+        notes: { type: string }
+      required: [barberId, serviceName, durationMin, startsAt]
+
+    TimeOff:
+      type: object
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        barberId: { $ref: "#/components/schemas/ObjectId" }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [_id, barberId, start, end]
+
+    CreateTimeOffRequest:
+      type: object
+      properties:
+        barberId: { $ref: "#/components/schemas/ObjectId" }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        reason: { type: string }
+      required: [barberId, start, end]
