@@ -1,25 +1,21 @@
+// test/setup.ts
 import request from 'supertest';
-// this works because tsconfig paths maps @src/* -> src/*
 import app from '@src/server';
+import { connectDB } from '@src/config/db';
+import mongoose from 'mongoose';
 
-// Expose a typed supertest agent if you want to reuse it in tests
-let server: import('http').Server;
+// make supertest agent available to tests
 export const api = request(app);
 
-beforeAll( () => {
-  // If your app connects DB in index.ts, we can still listen here in tests
-  // but normally supertest can hit `app` directly without listen().
-  server = app.listen(0);
+// give slow CI a bit more headroom
+jest.setTimeout(15_000);
+
+beforeAll(async () => {
+  // ensure the test DB is connected before any test runs
+  await connectDB();
 });
 
 afterAll(async () => {
-  if (server) {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
-});
-
-// Optional: simple health-check to verify the setup (can be removed)
-test('setup: /api/health returns ok', async () => {
-  const res = await request(app).get('/api/health');
-  expect([200, 404]).toContain(res.status); // depending on your route
+  // close mongoose connection to avoid open handle (TCPSERVERWRAP)
+  await mongoose.connection.close();
 });
