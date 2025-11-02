@@ -478,6 +478,12 @@ paths:
                   service:
                     $ref: "#/components/schemas/Service"
                 required: [service]
+        "409":
+          description: Service name already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /admin/services/{id}:
     patch:
@@ -508,6 +514,12 @@ paths:
                   service:
                     $ref: "#/components/schemas/Service"
                 required: [service]
+        "409":
+          description: Service name already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       tags: [Admin - Services]
       summary: Delete service
@@ -765,6 +777,7 @@ components:
       properties:
         _id: { $ref: "#/components/schemas/ObjectId" }
         name: { type: string }
+        active: { type: boolean }
         workingHours:
           type: array
           items:

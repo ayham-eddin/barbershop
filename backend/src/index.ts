@@ -13,6 +13,9 @@ logger.info('>>> ENTRY: index.ts is running');
     await connectDB();
     server.listen(ENV.Port, () => {
       logger.info(`🚀 API listening on http://localhost:${ENV.Port}`);
+      logger.info(`📜 OpenAPI:     http://localhost:${ENV.Port}/api/openapi.yaml`);
+      logger.info(`🧭 Swagger UI:  http://localhost:${ENV.Port}/api/docs`);
+      logger.info(`❤️ Health:      http://localhost:${ENV.Port}/api/health`);
     });
     server.on('error', (err) => {
       logger.err(err);

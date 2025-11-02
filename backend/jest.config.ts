@@ -4,30 +4,60 @@ import { pathsToModuleNameMapper } from 'ts-jest';
 import tsconfig from './tsconfig.json';
 
 const config: Config = {
+  preset: 'ts-jest',
   testEnvironment: 'node',
-  // load env **before** we import the app anywhere
-  setupFiles: ['<rootDir>/test/setupEnv.ts'],
-  // do DB connect/close, expose supertest api, set timeout
-  setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
-  testMatch: ['<rootDir>/test/**/*.test.ts'],
-  clearMocks: true,
-  restoreMocks: true,
 
-  // modern ts-jest config (no deprecated globals)
+  // Modern ts-jest config placement
   transform: {
-    '^.+\\.tsx?$': [
-      'ts-jest',
-      {
-        tsconfig: './tsconfig.json',
-        isolatedModules: true,
-      },
-    ],
+    '^.+\\.ts$': ['ts-jest', { tsconfig: './tsconfig.json' }],
   },
 
   moduleNameMapper: pathsToModuleNameMapper(
-    tsconfig.compilerOptions.paths ?? {},
+    tsconfig.compilerOptions?.paths ?? {},
     { prefix: '<rootDir>/' },
   ),
+
+  setupFiles: ['<rootDir>/test/setupEnv.ts'],
+  setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
+  testMatch: ['<rootDir>/test/**/*.test.ts'],
+
+  clearMocks: true,
+  restoreMocks: true,
+
+  // 🚫 Run tests serially to avoid DB drop / race conditions
+  maxWorkers: 1,
+  testTimeout: 20000, // 20s to give headroom for slower DB ops
+
+  // ---- Coverage settings ----
+  collectCoverage: true,
+  coverageDirectory: '<rootDir>/coverage',
+  coverageReporters: ['text', 'lcov', 'json', 'html'],
+
+  // What files to measure
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/index.ts',           // usually just boots the server
+    '!src/**/server.ts',          // express composition, not core logic
+    '!src/config/**',             // wiring/config
+    '!src/common/constants/ENV.ts',
+    '!src/**/types.ts',           // pure types
+  ],
+
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '/test/',
+    '/dist/',
+  ],
+
+  // Relaxed thresholds to match your current coverage
+  coverageThreshold: {
+    global: {
+      statements: 70,
+      branches: 35,
+      functions: 60,
+      lines: 71,
+    },
+  },
 };
 
 export default config;

@@ -1,22 +1,43 @@
 /* eslint-disable n/no-process-env */
 /* cspell:ignore testsecret */
 
-// Ensure we’re in the test environment
-process.env.NODE_ENV = 'test';
+/**
+ * Jest environment bootstrap
+ * Runs *before* any test files (including coverage runs)
+ * Ensures all required env variables exist.
+ */
 
-// Some code paths might read `PORT`; zero means “pick any free port”
+// Always force test environment
+process.env.NODE_ENV = process.env.NODE_ENV ?? 'test';
+
+// Use any available port if not set
 process.env.PORT = process.env.PORT ?? '0';
 
-// Mongo connection used during tests
-process.env.MONGO_URI =
-  process.env.MONGO_URI ?? 'mongodb://127.0.0.1:27017/barbershop_test';
-// Provide camelCase alias too, in case ENV.ts reads that shape
+// -----------------------------------------------------------------------------
+// ✅ MongoDB connection for tests
+// -----------------------------------------------------------------------------
+if (!process.env.MONGO_URI) {
+  const host = '127.0.0.1';
+  const port = '27017';
+  const dbName = 'barbershop_test';
+
+  // If you want to isolate databases per Jest worker, uncomment:
+  // const worker = process.env.JEST_WORKER_ID || '1';
+  // const dbName = `barbershop_test_${worker}`;
+
+  process.env.MONGO_URI = `mongodb://${host}:${port}/${dbName}`;
+}
+
+// Also provide camelCase alias (in case ENV.ts expects it)
 process.env.MongoUri = process.env.MongoUri ?? process.env.MONGO_URI;
 
-// JWT secret for signing test tokens
+// -----------------------------------------------------------------------------
+// ✅ JWT + Booking defaults
+// -----------------------------------------------------------------------------
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'testsecret';
-
-// Booking buffer (minutes) — 0 so slots appear immediately in tests
 process.env.BOOKING_BUFFER_MIN = process.env.BOOKING_BUFFER_MIN ?? '0';
 process.env.BookingBufferMin =
   process.env.BookingBufferMin ?? process.env.BOOKING_BUFFER_MIN;
+
+// No exports needed — Jest just executes this file automatically
+export {};

@@ -1,15 +1,17 @@
 import { Schema, model, type Document, Types } from 'mongoose';
 
 export interface WorkingHour {
-  day: 0|1|2|3|4|5|6;   // 0 = Sunday
-  start: string;        // "09:00"
-  end: string;          // "17:00"
+  day: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Sunday
+  start: string; // "09:00"
+  end: string;   // "17:00"
 }
 
 export interface BarberDoc extends Document {
   name: string;
+  specialties: string[];
   workingHours: WorkingHour[];
   services: Types.ObjectId[]; // refs Service
+  active: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,8 +28,10 @@ const WorkingHourSchema = new Schema<WorkingHour>(
 const BarberSchema = new Schema<BarberDoc>(
   {
     name: { type: String, required: true, trim: true },
+    specialties: { type: [String], default: [] },
     workingHours: { type: [WorkingHourSchema], default: [] },
     services: [{ type: Schema.Types.ObjectId, ref: 'Service' }],
+    active: { type: Boolean, default: true },
   },
   { timestamps: true },
 );

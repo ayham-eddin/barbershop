@@ -57,12 +57,24 @@ r.post(
   async (req: Request, res: Response) => {
     const { name, durationMin, price } =
       req.body as z.infer<typeof createSchema>;
+
+    // app-level guard
     const exists = await Service.exists({ name }).exec();
     if (exists) {
       return res.status(409).json({ error: 'Service name already exists' });
     }
-    const svc = await Service.create({ name, durationMin, price });
-    return res.status(201).json({ service: svc });
+
+    try {
+      const svc = await Service.create({ name, durationMin, price });
+      return res.status(201).json({ service: svc });
+    } catch (e) {
+      // DB-level guard (if unique index is present)
+      const err = e as { code?: unknown };
+      if (err?.code === 11000) {
+        return res.status(409).json({ error: 'Service name already exists' });
+      }
+      throw e;
+    }
   },
 );
 
@@ -76,17 +88,35 @@ r.patch(
   async (req: Request, res: Response) => {
     const { id } = req.params as z.infer<typeof idParams>;
     const updates = req.body as z.infer<typeof updateSchema>;
+    const _id = new Types.ObjectId(id);
 
-    const updated = await Service.findByIdAndUpdate(
-      new Types.ObjectId(id),
-      { $set: updates },
-      { new: true },
-    ).lean<ServiceDoc | null>().exec();
-
-    if (!updated) {
-      return res.status(404).json({ error: 'Service not found' });
+    // If the update tries to change the name, ensure it doesn't duplicate another service
+    if (typeof updates.name === 'string') {
+      const dup = await Service.exists({ name: updates.name, _id: { $ne: _id } }).exec();
+      if (dup) {
+        return res.status(409).json({ error: 'Service name already exists' });
+      }
     }
-    return res.json({ service: updated });
+
+    try {
+      const updated = await Service.findByIdAndUpdate(
+        _id,
+        { $set: updates },
+        { new: true },
+      ).lean<ServiceDoc | null>().exec();
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Service not found' });
+      }
+      return res.json({ service: updated });
+    } catch (e) {
+      // Handle duplicate key if you later add a unique index on name
+      const err = e as { code?: unknown };
+      if (err?.code === 11000) {
+        return res.status(409).json({ error: 'Service name already exists' });
+      }
+      throw e;
+    }
   },
 );
 

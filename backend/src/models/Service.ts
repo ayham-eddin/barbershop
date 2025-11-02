@@ -17,4 +17,7 @@ const ServiceSchema = new Schema<ServiceDoc>(
   { timestamps: true },
 );
 
+// 🔒 Enforce unique names at the DB level
+ServiceSchema.index({ name: 1 }, { unique: true });
+
 export const Service = model<ServiceDoc>('Service', ServiceSchema);

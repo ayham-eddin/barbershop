@@ -27,6 +27,7 @@ function toMinutes(hhmm: string): number {
  * - duration is in minutes
  * - stepMin defines granularity between slots (default 15)
  * - excludes overlapping appointments & time-offs
+ * - respects BookingBufferMin only for slots on the current UTC day
  */
 export async function getAvailableSlots(
   barberId: string,
@@ -53,8 +54,10 @@ export async function getAvailableSlots(
   const rangeStart = dayStart.add(startM, 'minute');
   const rangeEnd = dayStart.add(endM, 'minute');
 
-  // Prevent booking within buffer minutes from now
-  const minStartUtc = dayjs.utc().add(ENV.BookingBufferMin, 'minute');
+  // Buffer applies only if the requested date is today (UTC)
+  const nowUtc = dayjs.utc();
+  const isSameDay = dayStart.isSame(nowUtc, 'day');
+  const minStartUtc = nowUtc.add(ENV.BookingBufferMin, 'minute');
 
   // Find overlapping appointments
   const appointments = await Appointment.find({
@@ -96,7 +99,8 @@ export async function getAvailableSlots(
     const q = p.add(duration, 'minute');
 
     const overlaps = blocks.some((b) => p.isBefore(b.e) && q.isAfter(b.s));
-    const respectsBuffer = !p.isBefore(minStartUtc);
+    // Apply buffer only for today; future/past days ignore it
+    const respectsBuffer = !isSameDay || !p.isBefore(minStartUtc);
 
     if (!overlaps && respectsBuffer) {
       slots.push({ start: p.toISOString(), end: q.toISOString() });

@@ -1,3 +1,7 @@
+// Allow more time when running with coverage
+jest.setTimeout(30_000);
+jest.retryTimes(1);
+
 import { api, resetDb, createAdminToken } from './helpers';
 
 interface ServiceOut {

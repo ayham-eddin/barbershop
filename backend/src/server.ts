@@ -42,24 +42,33 @@ if (ENV.NodeEnv === NodeEnvs.Production) {
 
 /******************************************************************************
  * OpenAPI / Swagger UI
- * Serve the YAML statically and let Swagger UI fetch it.
+ * Serve the YAML under /api and let Swagger UI fetch it there too.
  ******************************************************************************/
 
-app.get('/openapi.yaml', (_req, res) => {
+// Serve the OpenAPI YAML from repo root at /api/openapi.yaml
+app.get(`${Paths.Base}/openapi.yaml`, (_req, res) => {
   const filePath = path.join(process.cwd(), 'openapi.yaml');
   res.sendFile(filePath);
 });
 
-// Narrow, local suppression for swagger-ui-express’ loose types
- 
+// swagger-ui-express typings are a bit loose; cast to RequestHandler(s)
 const swaggerServe: RequestHandler[] =
   (swaggerUi.serve as unknown as RequestHandler[]);
-const swaggerSetup: RequestHandler =
-  (swaggerUi.setup(undefined, {
-    swaggerOptions: { url: '/openapi.yaml' },
-  }) as unknown as RequestHandler);
+const swaggerSetup: RequestHandler = (
+  swaggerUi.setup(undefined, {
+    swaggerOptions: { url: `${Paths.Base}/openapi.yaml` },
+  }) as unknown as RequestHandler
+);
 
-app.use('/docs', swaggerServe, swaggerSetup);
+// Mount docs at /api/docs
+app.use(`${Paths.Base}/docs`, swaggerServe, swaggerSetup);
+
+/******************************************************************************
+ * Health (matches OpenAPI /health under the /api base)
+ ******************************************************************************/
+app.get(`${Paths.Base}/health`, (_req, res) => {
+  res.json({ ok: true });
+});
 
 /******************************************************************************
  * API Routes
