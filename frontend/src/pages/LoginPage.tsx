@@ -1,5 +1,6 @@
 // src/pages/LoginPage.tsx
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { AxiosError } from 'axios';
 import api from '../api/client';
 
@@ -11,7 +12,6 @@ function extractErrorMessage(err: unknown): string {
   const fallback = 'Request failed';
   if (typeof err === 'string') return err;
   if (err && typeof err === 'object') {
-    // Axios-style error shape
     const ax = err as AxiosError<{ error?: string; message?: string }>;
     const msg =
       ax.response?.data?.error ??
@@ -30,6 +30,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const navigate = useNavigate();
+
   const switchMode = () => {
     setMode((m) => (m === 'login' ? 'register' : 'login'));
     setError(null);
@@ -39,20 +41,29 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
     try {
+      let token: string;
+      let role: 'user' | 'admin';
+
       if (mode === 'login') {
         const res = await api.post('/api/auth/login', { email, password });
-        const { token, user } = res.data as { token: string; user: { role: 'user' | 'admin' } };
-        localStorage.setItem('token', token);
-        localStorage.setItem('role', user.role);
-        onLogin(token, user.role);
+        const data = res.data as { token: string; user: { role: 'user' | 'admin' } };
+        token = data.token;
+        role = data.user.role;
       } else {
         const res = await api.post('/api/auth/register', { name, email, password });
-        const { token, user } = res.data as { token: string; user: { role: 'user' | 'admin' } };
-        localStorage.setItem('token', token);
-        localStorage.setItem('role', user.role);
-        onLogin(token, user.role);
+        const data = res.data as { token: string; user: { role: 'user' | 'admin' } };
+        token = data.token;
+        role = data.user.role;
       }
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('role', role);
+      onLogin(token, role);
+
+      // ✅ Redirect to home after login/register
+      navigate('/', { replace: true });
     } catch (err: unknown) {
       setError(extractErrorMessage(err));
     } finally {
@@ -115,7 +126,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           disabled={loading}
           className="w-full rounded-lg bg-amber-400 text-neutral-900 font-semibold py-2 hover:bg-amber-300 transition disabled:opacity-60"
         >
-          {loading ? (mode === 'login' ? 'Signing in…' : 'Creating account…') : (mode === 'login' ? 'Login' : 'Register')}
+          {loading
+            ? mode === 'login'
+              ? 'Signing in…'
+              : 'Creating account…'
+            : mode === 'login'
+            ? 'Login'
+            : 'Register'}
         </button>
       </form>
 
@@ -125,7 +142,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           className="text-sm text-neutral-600 hover:text-neutral-900 underline underline-offset-4"
           type="button"
         >
-          {mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Login'}
+          {mode === 'login'
+            ? "Don't have an account? Register"
+            : 'Already have an account? Login'}
         </button>
       </div>
     </div>

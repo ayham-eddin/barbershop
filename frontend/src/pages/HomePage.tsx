@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -8,23 +9,26 @@ import {
 } from "../api/public";
 
 export default function HomePage() {
+  const [role, setRole] = useState<'user' | 'admin' | null>(null);
+
+  useEffect(() => {
+    setRole((localStorage.getItem('role') as 'user' | 'admin' | null) || null);
+    const onStorage = () => setRole((localStorage.getItem('role') as 'user' | 'admin' | null) || null);
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   const {
     data: services,
     isLoading: sLoading,
     isError: sError,
-  } = useQuery({
-    queryKey: ["services"],
-    queryFn: getServices,
-  });
+  } = useQuery({ queryKey: ["services"], queryFn: getServices });
 
   const {
     data: barbers,
     isLoading: bLoading,
     isError: bError,
-  } = useQuery({
-    queryKey: ["barbers"],
-    queryFn: getBarbers,
-  });
+  } = useQuery({ queryKey: ["barbers"], queryFn: getBarbers });
 
   return (
     <div className="space-y-14">
@@ -43,12 +47,23 @@ export default function HomePage() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            <Link
-              to="/book"
-              className="inline-flex items-center rounded-lg bg-amber-400 px-5 py-2.5 text-neutral-900 font-semibold hover:bg-amber-300 transition shadow-sm"
-            >
-              Book now
-            </Link>
+            {/* Show "Book now" only for users, admins get Admin link */}
+            {role !== 'admin' ? (
+              <Link
+                to="/book"
+                className="inline-flex items-center rounded-lg bg-amber-400 px-5 py-2.5 text-neutral-900 font-semibold hover:bg-amber-300 transition shadow-sm"
+              >
+                Book now
+              </Link>
+            ) : (
+              <Link
+                to="/admin/bookings"
+                className="inline-flex items-center rounded-lg bg-amber-400 px-5 py-2.5 text-neutral-900 font-semibold hover:bg-amber-300 transition shadow-sm"
+              >
+                Go to Admin
+              </Link>
+            )}
+
             <a
               href="#services"
               className="inline-flex items-center rounded-lg border border-neutral-700 px-5 py-2.5 text-white hover:bg-neutral-800 transition"
@@ -77,7 +92,7 @@ export default function HomePage() {
         {services && (
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((s) => (
-              <ServiceCard key={s._id} service={s} />
+              <ServiceCard key={s._id} service={s} role={role} />
             ))}
           </div>
         )}
@@ -112,7 +127,7 @@ export default function HomePage() {
 
 /* ---------------------------- UI SUBCOMPONENTS ---------------------------- */
 
-function ServiceCard({ service }: { service: Service }) {
+function ServiceCard({ service, role }: { service: Service; role: 'user' | 'admin' | null }) {
   return (
     <article className="group relative rounded-2xl bg-white border border-neutral-200 p-5 shadow-sm hover:shadow-md transition">
       <div className="flex items-start justify-between gap-4">
@@ -123,12 +138,21 @@ function ServiceCard({ service }: { service: Service }) {
       </div>
       <p className="text-sm text-neutral-600 mt-1">{service.durationMin} min</p>
 
-      <Link
-        to="/book"
-        className="mt-4 inline-flex items-center rounded-lg bg-neutral-900 text-white px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 transition"
-      >
-        Book
-      </Link>
+      {role !== 'admin' ? (
+        <Link
+          to="/book"
+          className="mt-4 inline-flex items-center rounded-lg bg-neutral-900 text-white px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 transition"
+        >
+          Book
+        </Link>
+      ) : (
+        <Link
+          to="/admin/bookings"
+          className="mt-4 inline-flex items-center rounded-lg bg-neutral-900 text-white px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 transition"
+        >
+          Manage
+        </Link>
+      )}
 
       <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-transparent group-hover:ring-neutral-200" />
     </article>
