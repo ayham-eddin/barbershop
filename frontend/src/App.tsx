@@ -33,7 +33,7 @@ function App() {
     <BrowserRouter>
       <Navbar token={token} role={role} onLogout={handleLogout} />
 
-      <main className="container">
+      <main className="max-w-6xl mx-auto p-6">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage setToken={setToken} />} />
