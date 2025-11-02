@@ -1,40 +1,63 @@
-import { useQuery } from '@tanstack/react-query';
-import { getServices, getBarbers, type Service, type Barber } from '../api/public';
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import {
+  getServices,
+  getBarbers,
+  type Service,
+  type Barber,
+} from "../api/public";
 
 export default function HomePage() {
-  const { data: services, isLoading: sLoading, isError: sError } = useQuery({
-    queryKey: ['services'],
+  const {
+    data: services,
+    isLoading: sLoading,
+    isError: sError,
+  } = useQuery({
+    queryKey: ["services"],
     queryFn: getServices,
   });
 
-  const { data: barbers, isLoading: bLoading, isError: bError } = useQuery({
-    queryKey: ['barbers'],
+  const {
+    data: barbers,
+    isLoading: bLoading,
+    isError: bError,
+  } = useQuery({
+    queryKey: ["barbers"],
     queryFn: getBarbers,
   });
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-14">
       {/* HERO */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 text-white">
         <div className="absolute -top-10 -right-10 h-48 w-48 rounded-full bg-amber-500/20 blur-2xl" />
         <div className="absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-amber-400/10 blur-2xl" />
-        <div className="relative p-8 md:p-12">
-          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
+
+        <div className="relative p-10 md:p-14">
+          <h1 className="text-3xl md:text-5xl font-semibold tracking-tight">
             Look sharp. Book fast.
           </h1>
-          <p className="mt-3 text-neutral-300 max-w-xl">
-            Choose your barber, pick a service, and reserve a time slot in seconds.
+          <p className="mt-4 text-neutral-300 max-w-xl">
+            Choose your barber, pick a service, and reserve your spot in
+            seconds — all online.
           </p>
-          <div className="mt-6 flex items-center gap-3">
+
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <Link
+              to="/book"
+              className="inline-flex items-center rounded-lg bg-amber-400 px-5 py-2.5 text-neutral-900 font-semibold hover:bg-amber-300 transition shadow-sm"
+            >
+              Book now
+            </Link>
             <a
               href="#services"
-              className="inline-flex items-center rounded-lg bg-amber-400 px-4 py-2 text-neutral-900 font-semibold hover:bg-amber-300 transition"
+              className="inline-flex items-center rounded-lg border border-neutral-700 px-5 py-2.5 text-white hover:bg-neutral-800 transition"
             >
               View Services
             </a>
             <a
               href="#barbers"
-              className="inline-flex items-center rounded-lg border border-neutral-700 px-4 py-2 text-white hover:bg-neutral-800 transition"
+              className="inline-flex items-center rounded-lg border border-neutral-700 px-5 py-2.5 text-white hover:bg-neutral-800 transition"
             >
               Meet Barbers
             </a>
@@ -43,17 +66,16 @@ export default function HomePage() {
       </section>
 
       {/* SERVICES */}
-      <section id="services" className="space-y-4">
+      <section id="services" className="space-y-5">
         <div className="flex items-end justify-between">
-          <h2 className="text-xl font-semibold text-neutral-900">Services</h2>
-          {/* future: filters/sort */}
+          <h2 className="text-2xl font-semibold text-neutral-900">Services</h2>
         </div>
 
         {sLoading && <ListSkeleton />}
         {sError && <ErrorBox text="Couldn’t load services. Please retry." />}
 
         {services && (
-          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((s) => (
               <ServiceCard key={s._id} service={s} />
             ))}
@@ -66,14 +88,14 @@ export default function HomePage() {
       </section>
 
       {/* BARBERS */}
-      <section id="barbers" className="space-y-4">
-        <h2 className="text-xl font-semibold text-neutral-900">Barbers</h2>
+      <section id="barbers" className="space-y-5">
+        <h2 className="text-2xl font-semibold text-neutral-900">Barbers</h2>
 
         {bLoading && <ListSkeleton />}
         {bError && <ErrorBox text="Couldn’t load barbers. Please retry." />}
 
         {barbers && (
-          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {barbers.map((b) => (
               <BarberCard key={b._id} barber={b} />
             ))}
@@ -101,14 +123,13 @@ function ServiceCard({ service }: { service: Service }) {
       </div>
       <p className="text-sm text-neutral-600 mt-1">{service.durationMin} min</p>
 
-      <button
+      <Link
+        to="/book"
         className="mt-4 inline-flex items-center rounded-lg bg-neutral-900 text-white px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 transition"
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       >
         Book
-      </button>
+      </Link>
 
-      {/* subtle hover ring */}
       <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-transparent group-hover:ring-neutral-200" />
     </article>
   );
@@ -116,10 +137,10 @@ function ServiceCard({ service }: { service: Service }) {
 
 function BarberCard({ barber }: { barber: Barber }) {
   const initials = barber.name
-    .split(' ')
+    .split(" ")
     .map((x) => x[0])
     .slice(0, 2)
-    .join('')
+    .join("")
     .toUpperCase();
 
   return (
@@ -133,7 +154,7 @@ function BarberCard({ barber }: { barber: Barber }) {
           <p className="text-sm text-neutral-600">
             {Array.isArray(barber.workingHours) && barber.workingHours.length
               ? `Mon–Fri ${barber.workingHours[0].start}–${barber.workingHours[0].end}`
-              : 'Hours not set'}
+              : "Hours not set"}
           </p>
         </div>
       </div>

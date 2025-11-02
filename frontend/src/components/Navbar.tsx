@@ -23,24 +23,18 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
         </Link>
 
         <div className="flex items-center gap-6">
+          <NavLink to="/book" className="text-sm font-semibold text-neutral-900 bg-amber-400 hover:bg-amber-300 rounded-lg px-3 py-1.5 transition">
+            Book
+          </NavLink>
+
           {!token && <NavLink to="/login" className={linkClass}>Login</NavLink>}
-
-          {token && role === 'user' && (
-            <NavLink to="/dashboard" className={linkClass}>
-              My Bookings
-            </NavLink>
-          )}
-
-          {token && role === 'admin' && (
-            <NavLink to="/admin/bookings" className={linkClass}>
-              Admin
-            </NavLink>
-          )}
+          {token && role === 'user' && <NavLink to="/dashboard" className={linkClass}>My Bookings</NavLink>}
+          {token && role === 'admin' && <NavLink to="/admin/bookings" className={linkClass}>Admin</NavLink>}
 
           {token && (
             <button
               onClick={onLogout}
-              className="text-sm font-semibold text-neutral-900 bg-amber-400 hover:bg-amber-300 rounded-lg px-3 py-1.5 transition-colors"
+              className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
             >
               Logout
             </button>
