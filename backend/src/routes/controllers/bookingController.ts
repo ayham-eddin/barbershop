@@ -128,15 +128,37 @@ export async function cancelBooking(
   res.json({ booking: updated });
 }
 
-/** GET /api/bookings/admin/all (admin only) */
+/**
+ * GET /api/bookings/admin/all (admin only)
+ * Pagination via ?page=&limit=
+ * - page: 1-based (default 1, min 1)
+ * - limit: default 10 (min 1, max 100)
+ * Response (backward-compatible):
+ * { bookings: [...], items: [...], page, limit, total, pages }
+ */
 export async function adminAllBookings(
-  _req: AuthRequest,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
-  const bookings = await Appointment.find()
-    .sort({ startsAt: 1 })
-    .lean<AppointmentDoc[]>()
-    .exec();
+  const rawPage = (req.query.page as string) ?? '1';
+  const rawLimit = (req.query.limit as string) ?? '10';
 
-  res.json({ bookings });
+  const page = Math.max(1, Number.parseInt(rawPage, 10) || 1);
+  const limit = Math.max(1, Math.min(100, Number.parseInt(rawLimit, 10) || 10));
+  const skip = (page - 1) * limit;
+
+  const [bookings, total] = await Promise.all([
+    Appointment.find()
+      .sort({ startsAt: 1 })
+      .skip(skip)
+      .limit(limit)
+      .lean<AppointmentDoc[]>()
+      .exec(),
+    Appointment.countDocuments().exec(),
+  ]);
+
+  const pages = Math.max(1, Math.ceil(total / limit));
+
+  // Keep old key `bookings` for tests/legacy clients; also expose `items`.
+  res.json({ bookings, items: bookings, page, limit, total, pages });
 }
