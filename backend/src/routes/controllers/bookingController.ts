@@ -131,6 +131,15 @@ export async function cancelBooking(
 /**
  * GET /api/bookings/admin/all (admin only)
  * Pagination via ?page=&limit=
+ * NEW filters (all optional):
+ *   - status=booked|cancelled|completed
+ *   - barberId=<ObjectId>
+ *   - dateFrom=YYYY-MM-DD
+ *   - dateTo=YYYY-MM-DD
+ *   - q=<search in user name/email>
+ * Response:
+ * { bookings: [...], items: [...], page, limit, total, pages }
+ * Each booking includes: user {id,name?,email?}, barber {id,name?}
  */
 export async function adminAllBookings(
   req: AuthRequest,
@@ -143,32 +152,115 @@ export async function adminAllBookings(
   const limit = Math.max(1, Math.min(100, Number.parseInt(rawLimit, 10) || 10));
   const skip = (page - 1) * limit;
 
+  // Build filter object
+  const filter: Record<string, unknown> = {};
+
+  // status filter
+  const status = (req.query.status as string | undefined)?.toLowerCase();
+  if (status && ['booked', 'cancelled', 'completed'].includes(status)) {
+    filter.status = status;
+  }
+
+  // barberId filter
+  const barberId = req.query.barberId as string | undefined;
+  if (barberId && Types.ObjectId.isValid(barberId)) {
+    filter.barberId = new Types.ObjectId(barberId);
+  }
+
+  // date range filter on startsAt
+  const dateFrom = req.query.dateFrom as string | undefined; // YYYY-MM-DD
+  const dateTo = req.query.dateTo as string | undefined;     // YYYY-MM-DD
+  if (dateFrom || dateTo) {
+    const range: { $gte?: Date; $lte?: Date } = {};
+    if (dateFrom) {
+      const d = new Date(`${dateFrom}T00:00:00.000Z`);
+      if (!Number.isNaN(d.getTime())) range.$gte = d;
+    }
+    if (dateTo) {
+      const d = new Date(`${dateTo}T23:59:59.999Z`);
+      if (!Number.isNaN(d.getTime())) range.$lte = d;
+    }
+    if (range.$gte || range.$lte) {
+      filter.startsAt = range;
+    }
+  }
+
+  // text search in user name/email -> find matching userIds
+  const q = (req.query.q as string | undefined)?.trim();
+  if (q) {
+    const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const usersMatched = await User.find({
+      $or: [{ name: rx }, { email: rx }],
+    })
+      .select({ _id: 1 })
+      .lean()
+      .exec();
+
+    if (!usersMatched.length) {
+      // Fast empty result when no users matched the query
+      res.json({
+        bookings: [],
+        items: [],
+        page,
+        limit,
+        total: 0,
+        pages: 1,
+      });
+      return;
+    }
+
+    const userIdList = usersMatched.map((u) =>
+      typeof u._id === 'string'
+        ? new Types.ObjectId(u._id)
+        : (u._id as Types.ObjectId),
+    );
+    filter.userId = { $in: userIdList };
+  }
+
+  // Query DB with filter
   const [bookingsRaw, total] = await Promise.all([
-    Appointment.find()
+    Appointment.find(filter)
       .sort({ startsAt: 1 })
       .skip(skip)
       .limit(limit)
       .lean<AppointmentDoc[]>()
       .exec(),
-    Appointment.countDocuments().exec(),
+    Appointment.countDocuments(filter).exec(),
   ]);
 
-  const userIds = Array.from(
+  // collect unique ids to enrich (safe string conversion)
+  const userIdStrings = Array.from(
     new Set(
       bookingsRaw
-        .map((b) => String(b.userId))
+        .map((b) => {
+          try {
+            return (b.userId as unknown as Types.ObjectId).toHexString();
+          } catch {
+            return String(b.userId);
+          }
+        })
         .filter((id) => Types.ObjectId.isValid(id)),
     ),
-  ).map((id) => new Types.ObjectId(id));
+  );
 
-  const barberIds = Array.from(
+  const barberIdStrings = Array.from(
     new Set(
       bookingsRaw
-        .map((b) => String(b.barberId))
+        .map((b) => {
+          try {
+            return (b.barberId as unknown as Types.ObjectId).toHexString();
+          } catch {
+            return String(b.barberId);
+          }
+        })
         .filter((id) => Types.ObjectId.isValid(id)),
     ),
-  ).map((id) => new Types.ObjectId(id));
+  );
 
+  const userIds = userIdStrings.map((id) => new Types.ObjectId(id));
+  const barberIds = barberIdStrings.map((id) => new Types.ObjectId(id));
+
+  // bulk fetch user/barber metadata
   const [users, barbers] = await Promise.all([
     userIds.length
       ? User.find({ _id: { $in: userIds } })
@@ -184,6 +276,7 @@ export async function adminAllBookings(
       : Promise.resolve([] as { _id: Types.ObjectId; name?: string }[]),
   ]);
 
+  // build maps (use hex string keys explicitly to avoid implicit toString)
   const userMap = new Map<string, { id: string; name?: string; email?: string }>();
   users.forEach((u) => {
     const id =
@@ -203,8 +296,16 @@ export async function adminAllBookings(
   });
 
   const bookings = bookingsRaw.map((b) => {
-    const uid = String(b.userId);
-    const bid = String(b.barberId);
+    // normalize ids to hex strings for lookup
+    const uid =
+      typeof b.userId === 'string'
+        ? b.userId
+        : (b.userId as unknown as Types.ObjectId).toHexString();
+    const bid =
+      typeof b.barberId === 'string'
+        ? b.barberId
+        : (b.barberId as unknown as Types.ObjectId).toHexString();
+
     const user = userMap.get(uid) ?? { id: uid };
     const barber = barberMap.get(bid) ?? { id: bid };
     return {

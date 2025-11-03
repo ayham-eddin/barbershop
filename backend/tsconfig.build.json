@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",     // emit only src (clean runtime build)
+    "outDir": "dist",
+    "types": ["node"]     // no jest types during build
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["test", "dist", "node_modules", "scripts"]
+}

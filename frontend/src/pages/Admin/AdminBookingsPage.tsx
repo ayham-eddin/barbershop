@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import api from "../../api/client";
 
@@ -21,18 +21,49 @@ interface AdminResponse {
   total: number;
 }
 
+interface Barber {
+  _id: string;
+  name: string;
+}
+
 export default function AdminBookingsPage() {
+  // pagination + filters
   const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<string>("");
+  const [barberId, setBarberId] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [q, setQ] = useState<string>("");
+
+  // load barbers for the filter dropdown
+  const [barbers, setBarbers] = useState<Barber[]>([]);
+  useEffect(() => {
+    (async () => {
+      const res = await api.get<{ barbers: Barber[] }>("/api/barbers");
+      setBarbers(res.data.barbers);
+    })().catch(() => setBarbers([]));
+  }, []);
+
+  // build query string whenever filters/page change
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", "5");
+    if (status) params.set("status", status);
+    if (barberId) params.set("barberId", barberId);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    if (q.trim()) params.set("q", q.trim());
+    return params.toString();
+  }, [page, status, barberId, dateFrom, dateTo, q]);
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery<AdminResponse>({
-    queryKey: ["adminBookings", page],
+    queryKey: ["adminBookings", queryString],
     queryFn: async () => {
-      const res = await api.get(`/api/bookings/admin/all?page=${page}&limit=5`);
+      const res = await api.get(`/api/bookings/admin/all?${queryString}`);
       return res.data as AdminResponse;
     },
-    // React Query v5: this replaces `keepPreviousData: true`
     placeholderData: keepPreviousData,
-    // Optional: small stale window to avoid extra flashes
     staleTime: 5_000,
   });
 
@@ -46,9 +77,14 @@ export default function AdminBookingsPage() {
   const curPage = data?.page ?? page;
   const totalPages = data?.pages ?? 1;
 
+  // reset to first page when any filter changes (except page itself)
+  useEffect(() => {
+    setPage(1);
+  }, [status, barberId, dateFrom, dateTo, q]);
+
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-6 space-y-5">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-neutral-900">
           Admin Dashboard
         </h1>
@@ -59,6 +95,56 @@ export default function AdminBookingsPage() {
         >
           {isFetching ? "Refreshing…" : "Refresh"}
         </button>
+      </div>
+
+      {/* Filters */}
+      <div className="grid gap-3 grid-cols-1 md:grid-cols-5 bg-white border border-neutral-200 rounded-xl p-4">
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="rounded-lg border border-neutral-300 px-3 py-2"
+        >
+          <option value="">All statuses</option>
+          <option value="booked">Booked</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="completed">Completed</option>
+        </select>
+
+        <select
+          value={barberId}
+          onChange={(e) => setBarberId(e.target.value)}
+          className="rounded-lg border border-neutral-300 px-3 py-2"
+        >
+          <option value="">All barbers</option>
+          {barbers.map((b) => (
+            <option key={b._id} value={b._id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="rounded-lg border border-neutral-300 px-3 py-2"
+          placeholder="From"
+        />
+        <input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="rounded-lg border border-neutral-300 px-3 py-2"
+          placeholder="To"
+        />
+
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="rounded-lg border border-neutral-300 px-3 py-2"
+          placeholder="Search customer (name/email)"
+        />
       </div>
 
       {isLoading && (
@@ -84,7 +170,7 @@ export default function AdminBookingsPage() {
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b: AdminBooking) => (
+              {bookings.map((b) => (
                 <tr
                   key={b._id}
                   className="border-t border-neutral-100 hover:bg-neutral-50 transition"
@@ -117,7 +203,7 @@ export default function AdminBookingsPage() {
                     colSpan={5}
                     className="px-4 py-8 text-center text-neutral-500"
                   >
-                    No bookings to show.
+                    No bookings match your filters.
                   </td>
                 </tr>
               )}
@@ -151,7 +237,6 @@ export default function AdminBookingsPage() {
 }
 
 /* ---------------------------- UI Subcomponents ---------------------------- */
-
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     booked: "bg-amber-100 text-amber-800 border-amber-200",

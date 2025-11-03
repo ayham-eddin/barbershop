@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "tsx -r ./src/config/loadEnv.ts src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node -r module-alias/register -r ./dist/src/config/loadEnv.js dist/src/index.js",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src --ext .ts",
@@ -16,6 +16,9 @@
   },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "_moduleAliases": {
+    "@src": "dist/src"
   },
   "dependencies": {
     "@types/cors": "^2.8.19",

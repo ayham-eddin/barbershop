@@ -11,6 +11,7 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
 
+    "rootDir": ".",                // <-- allow src, test, scripts for IDE
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
@@ -25,5 +26,5 @@
     "jest.config.ts",
     "scripts/**/*.ts"
   ],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["dist", "node_modules"]
 }
