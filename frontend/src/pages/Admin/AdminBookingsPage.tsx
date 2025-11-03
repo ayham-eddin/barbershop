@@ -1,159 +1,172 @@
-// src/pages/Admin/AdminBookingsPage.tsx
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { cancelBooking } from '../../api/bookings';
-import api from '../../api/client';
-import { useMemo, useState } from 'react';
+import { useState } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import api from "../../api/client";
 
-type Booking = {
+interface AdminBooking {
   _id: string;
-  userId: string;
-  barberId: string;
   serviceName: string;
   durationMin: number;
   startsAt: string;
   endsAt: string;
-  status: 'booked' | 'cancelled';
-  createdAt: string;
-};
+  status: string;
+  user?: { id: string; name?: string; email?: string };
+  barber?: { id: string; name?: string };
+}
 
-type Barber = { _id: string; name: string };
+interface AdminResponse {
+  bookings: AdminBooking[];
+  page: number;
+  limit: number;
+  pages: number;
+  total: number;
+}
 
 export default function AdminBookingsPage() {
-  const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<'all' | 'booked' | 'cancelled'>('all');
+  const [page, setPage] = useState(1);
 
-  const { data: bookings, isLoading, isError } = useQuery({
-    queryKey: ['adminBookings'],
+  const { data, isLoading, isError, refetch, isFetching } = useQuery<AdminResponse>({
+    queryKey: ["adminBookings", page],
     queryFn: async () => {
-      const res = await api.get<{ bookings: Booking[] }>('/api/bookings/admin/all');
-      return res.data.bookings;
+      const res = await api.get(`/api/bookings/admin/all?page=${page}&limit=5`);
+      return res.data as AdminResponse;
     },
+    // React Query v5: this replaces `keepPreviousData: true`
+    placeholderData: keepPreviousData,
+    // Optional: small stale window to avoid extra flashes
+    staleTime: 5_000,
   });
 
-  const { data: barbers } = useQuery({
-    queryKey: ['barbers'],
-    queryFn: async () => {
-      const res = await api.get<{ barbers: Barber[] }>('/api/barbers');
-      return res.data.barbers;
-    },
-  });
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleString("de-DE", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
 
-  const barberNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    (barbers ?? []).forEach((b) => map.set(b._id, b.name));
-    return map;
-  }, [barbers]);
-
-  const mutation = useMutation({
-    mutationFn: (id: string) => cancelBooking(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['adminBookings'] }),
-  });
-
-  const filtered = (bookings ?? []).filter((b) => filter === 'all' || b.status === filter);
+  const bookings: AdminBooking[] = data?.bookings ?? [];
+  const curPage = data?.page ?? page;
+  const totalPages = data?.pages ?? 1;
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">Bookings</h1>
-          <p className="text-sm text-neutral-500">Manage all customer appointments</p>
-        </div>
-
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as 'all' | 'booked' | 'cancelled')}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+    <div className="p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-neutral-900">
+          Admin Dashboard
+        </h1>
+        <button
+          onClick={() => refetch()}
+          className="rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-medium hover:bg-neutral-800 transition disabled:opacity-60"
+          disabled={isFetching}
         >
-          <option value="all">All</option>
-          <option value="booked">Booked</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+          {isFetching ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white shadow-sm">
-        <table className="min-w-full text-sm text-left text-neutral-700">
-          <thead className="bg-neutral-100 text-neutral-900 font-medium">
-            <tr>
-              <th className="px-4 py-3">Barber</th>
-              <th className="px-4 py-3">User</th>
-              <th className="px-4 py-3">Service</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr>
-                <td colSpan={6} className="text-center py-8 text-neutral-500">
-                  Loading bookings…
-                </td>
-              </tr>
-            )}
+      {isLoading && (
+        <div className="text-center text-neutral-500 py-12">Loading…</div>
+      )}
 
-            {isError && (
-              <tr>
-                <td colSpan={6} className="text-center py-8 text-rose-600">
-                  Failed to load bookings.
-                </td>
-              </tr>
-            )}
+      {isError && (
+        <div className="text-center text-rose-600 bg-rose-50 border border-rose-200 rounded-lg py-4">
+          Failed to load bookings. Try again later.
+        </div>
+      )}
 
-            {!isLoading && filtered.length === 0 && (
+      {!isLoading && !isError && (
+        <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+          <table className="min-w-full text-sm text-left">
+            <thead className="bg-neutral-100 text-neutral-700 uppercase text-xs">
               <tr>
-                <td colSpan={6} className="text-center py-8 text-neutral-500">
-                  No bookings found.
-                </td>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Service</th>
+                <th className="px-4 py-3">Barber</th>
+                <th className="px-4 py-3">Customer</th>
+                <th className="px-4 py-3">Status</th>
               </tr>
-            )}
-
-            {!isLoading &&
-              filtered.map((b) => (
-                <tr key={b._id} className="border-t border-neutral-200">
-                  <td className="px-4 py-3">
-                    {barberNameById.get(b.barberId) ?? `#${b.barberId.slice(-4)}`}
+            </thead>
+            <tbody>
+              {bookings.map((b: AdminBooking) => (
+                <tr
+                  key={b._id}
+                  className="border-t border-neutral-100 hover:bg-neutral-50 transition"
+                >
+                  <td className="px-4 py-3 text-neutral-800">
+                    {fmtDate(b.startsAt)}
+                  </td>
+                  <td className="px-4 py-3">{b.serviceName}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {b.barber?.name ?? "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {/* We don’t have a users endpoint yet; show a short id for now */}
-                    #{b.userId.slice(-6)}
-                  </td>
-                  <td className="px-4 py-3">{b.serviceName} · {b.durationMin} min</td>
-                  <td className="px-4 py-3">
-                    {new Date(b.startsAt).toLocaleString('de-DE', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                      timeZone: 'Europe/Berlin',
-                    })}
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {b.user?.name ?? "—"}
+                      </span>
+                      <span className="text-neutral-500 text-xs">
+                        {b.user?.email ?? ""}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        b.status === 'booked'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-neutral-200 text-neutral-600'
-                      }`}
-                    >
-                      {b.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {b.status === 'booked' && (
-                      <button
-                        onClick={() => mutation.mutate(b._id)}
-                        disabled={mutation.isPending}
-                        className="rounded-md bg-rose-500 text-white px-3 py-1 text-xs font-medium hover:bg-rose-600 disabled:opacity-60"
-                      >
-                        Cancel
-                      </button>
-                    )}
+                    <StatusBadge status={b.status} />
                   </td>
                 </tr>
               ))}
-          </tbody>
-        </table>
-      </div>
+              {bookings.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-8 text-center text-neutral-500"
+                  >
+                    No bookings to show.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {/* Pagination */}
+          <div className="flex justify-between items-center px-4 py-3 border-t border-neutral-200 text-sm bg-neutral-50">
+            <button
+              disabled={curPage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <span className="text-neutral-600">
+              Page {curPage} / {totalPages}
+            </span>
+            <button
+              disabled={curPage >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+/* ---------------------------- UI Subcomponents ---------------------------- */
+
+function StatusBadge({ status }: { status: string }) {
+  const colors: Record<string, string> = {
+    booked: "bg-amber-100 text-amber-800 border-amber-200",
+    cancelled: "bg-rose-100 text-rose-800 border-rose-200",
+    completed: "bg-green-100 text-green-800 border-green-200",
+  };
+
+  const color =
+    colors[status] || "bg-neutral-100 text-neutral-700 border-neutral-200";
+
+  return (
+    <span
+      className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${color}`}
+    >
+      {status}
+    </span>
   );
 }
