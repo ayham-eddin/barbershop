@@ -40,8 +40,16 @@ export async function createBooking(
   res: Response,
 ): Promise<void> {
   const userId = req.user?.sub;
+  const role = req.user?.role;
+
   if (!userId) {
     res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  // 🚫 Block admins from creating bookings via public flow
+  if (role === 'admin') {
+    res.status(403).json({ error: 'Admins cannot create bookings' });
     return;
   }
 
@@ -95,7 +103,7 @@ export async function createBooking(
   res.status(201).json({ booking: appt });
 }
 
-/** POST /api/bookings/:id/cancel (auth required) */
+/** POST /api/bookings/:id/cancel (auth required, owner only) */
 export async function cancelBooking(
   req: AuthRequest<unknown, { id: string }>,
   res: Response,
@@ -131,7 +139,7 @@ export async function cancelBooking(
 /**
  * GET /api/bookings/admin/all (admin only)
  * Pagination via ?page=&limit=
- * NEW filters (all optional):
+ * Optional filters:
  *   - status=booked|cancelled|completed
  *   - barberId=<ObjectId>
  *   - dateFrom=YYYY-MM-DD
@@ -152,24 +160,20 @@ export async function adminAllBookings(
   const limit = Math.max(1, Math.min(100, Number.parseInt(rawLimit, 10) || 10));
   const skip = (page - 1) * limit;
 
-  // Build filter object
   const filter: Record<string, unknown> = {};
 
-  // status filter
   const status = (req.query.status as string | undefined)?.toLowerCase();
   if (status && ['booked', 'cancelled', 'completed'].includes(status)) {
     filter.status = status;
   }
 
-  // barberId filter
   const barberId = req.query.barberId as string | undefined;
   if (barberId && Types.ObjectId.isValid(barberId)) {
     filter.barberId = new Types.ObjectId(barberId);
   }
 
-  // date range filter on startsAt
-  const dateFrom = req.query.dateFrom as string | undefined; // YYYY-MM-DD
-  const dateTo = req.query.dateTo as string | undefined;     // YYYY-MM-DD
+  const dateFrom = req.query.dateFrom as string | undefined;
+  const dateTo = req.query.dateTo as string | undefined;
   if (dateFrom || dateTo) {
     const range: { $gte?: Date; $lte?: Date } = {};
     if (dateFrom) {
@@ -185,7 +189,6 @@ export async function adminAllBookings(
     }
   }
 
-  // text search in user name/email -> find matching userIds
   const q = (req.query.q as string | undefined)?.trim();
   if (q) {
     const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -197,7 +200,6 @@ export async function adminAllBookings(
       .exec();
 
     if (!usersMatched.length) {
-      // Fast empty result when no users matched the query
       res.json({
         bookings: [],
         items: [],
@@ -217,7 +219,6 @@ export async function adminAllBookings(
     filter.userId = { $in: userIdList };
   }
 
-  // Query DB with filter
   const [bookingsRaw, total] = await Promise.all([
     Appointment.find(filter)
       .sort({ startsAt: 1 })
@@ -228,7 +229,6 @@ export async function adminAllBookings(
     Appointment.countDocuments(filter).exec(),
   ]);
 
-  // collect unique ids to enrich (safe string conversion)
   const userIdStrings = Array.from(
     new Set(
       bookingsRaw
@@ -260,23 +260,21 @@ export async function adminAllBookings(
   const userIds = userIdStrings.map((id) => new Types.ObjectId(id));
   const barberIds = barberIdStrings.map((id) => new Types.ObjectId(id));
 
-  // bulk fetch user/barber metadata
   const [users, barbers] = await Promise.all([
     userIds.length
       ? User.find({ _id: { $in: userIds } })
-        .select({ name: 1, email: 1 })
-        .lean()
-        .exec()
+          .select({ name: 1, email: 1 })
+          .lean()
+          .exec()
       : Promise.resolve([] as { _id: Types.ObjectId; name?: string; email?: string }[]),
     barberIds.length
       ? Barber.find({ _id: { $in: barberIds } })
-        .select({ name: 1 })
-        .lean()
-        .exec()
+          .select({ name: 1 })
+          .lean()
+          .exec()
       : Promise.resolve([] as { _id: Types.ObjectId; name?: string }[]),
   ]);
 
-  // build maps (use hex string keys explicitly to avoid implicit toString)
   const userMap = new Map<string, { id: string; name?: string; email?: string }>();
   users.forEach((u) => {
     const id =
@@ -296,7 +294,6 @@ export async function adminAllBookings(
   });
 
   const bookings = bookingsRaw.map((b) => {
-    // normalize ids to hex strings for lookup
     const uid =
       typeof b.userId === 'string'
         ? b.userId
@@ -317,4 +314,56 @@ export async function adminAllBookings(
 
   const pages = Math.max(1, Math.ceil(total / limit));
   res.json({ bookings, items: bookings, page, limit, total, pages });
+}
+
+/** POST /api/bookings/admin/:id/cancel (admin only) */
+export async function adminCancelBooking(
+  req: AuthRequest<unknown, { id: string }>,
+  res: Response,
+): Promise<void> {
+  const bookingId = req.params.id;
+
+  const updated = await Appointment.findOneAndUpdate(
+    {
+      _id: new Types.ObjectId(bookingId),
+      status: 'booked',
+    },
+    { $set: { status: 'cancelled' } },
+    { new: true },
+  )
+    .lean<AppointmentDoc | null>()
+    .exec();
+
+  if (!updated) {
+    res.status(404).json({ error: 'Booking not found or not cancellable' });
+    return;
+  }
+
+  res.json({ booking: updated });
+}
+
+/** POST /api/bookings/admin/:id/complete (admin only) */
+export async function adminCompleteBooking(
+  req: AuthRequest<unknown, { id: string }>,
+  res: Response,
+): Promise<void> {
+  const bookingId = req.params.id;
+
+  const updated = await Appointment.findOneAndUpdate(
+    {
+      _id: new Types.ObjectId(bookingId),
+      status: 'booked',
+    },
+    { $set: { status: 'completed' } },
+    { new: true },
+  )
+    .lean<AppointmentDoc | null>()
+    .exec();
+
+  if (!updated) {
+    res.status(404).json({ error: 'Booking not found or not completable' });
+    return;
+  }
+
+  res.json({ booking: updated });
 }

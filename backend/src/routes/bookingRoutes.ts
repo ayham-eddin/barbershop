@@ -6,6 +6,8 @@ import {
   createBooking,
   cancelBooking,
   adminAllBookings,
+  adminCancelBooking,
+  adminCompleteBooking,
 } from './controllers/bookingController';
 import { getAvailableSlots } from '@src/services/scheduling';
 import { validateBody, validateParams } from '@src/middleware/validate';
@@ -26,8 +28,22 @@ router.post(
   cancelBooking,
 );
 
-/** 🧑‍💼 Admin view */
+/** 🧑‍💼 Admin view + actions */
 router.get('/admin/all', requireAuth, requireAdmin, adminAllBookings);
+router.post(
+  '/admin/:id/cancel',
+  requireAuth,
+  requireAdmin,
+  validateParams(cancelBookingSchema),
+  adminCancelBooking,
+);
+router.post(
+  '/admin/:id/complete',
+  requireAuth,
+  requireAdmin,
+  validateParams(cancelBookingSchema),
+  adminCompleteBooking,
+);
 
 /** 📅 Public availability check (no auth required) */
 router.get('/availability', async (req, res) => {

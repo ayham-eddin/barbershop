@@ -9,7 +9,7 @@ export type Booking = {
   durationMin: number;
   startsAt: string; // ISO
   endsAt: string;   // ISO
-  status: 'booked' | 'cancelled';
+  status: 'booked' | 'cancelled' | 'completed';
 };
 
 export async function getAvailability(params: {
@@ -41,5 +41,16 @@ export async function getMyBookings() {
 
 export async function cancelBooking(id: string) {
   const { data } = await api.post<{ booking: Booking }>(`/api/bookings/${id}/cancel`, {});
+  return data.booking;
+}
+
+/** Admin actions */
+export async function adminCancelBooking(id: string) {
+  const { data } = await api.post<{ booking: Booking }>(`/api/bookings/admin/${id}/cancel`, {});
+  return data.booking;
+}
+
+export async function adminCompleteBooking(id: string) {
+  const { data } = await api.post<{ booking: Booking }>(`/api/bookings/admin/${id}/complete`, {});
   return data.booking;
 }

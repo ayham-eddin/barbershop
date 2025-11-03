@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import api from "../../api/client";
 
 interface AdminBooking {
@@ -8,7 +13,7 @@ interface AdminBooking {
   durationMin: number;
   startsAt: string;
   endsAt: string;
-  status: string;
+  status: "booked" | "cancelled" | "completed" | string;
   user?: { id: string; name?: string; email?: string };
   barber?: { id: string; name?: string };
 }
@@ -27,6 +32,8 @@ interface Barber {
 }
 
 export default function AdminBookingsPage() {
+  const qc = useQueryClient();
+
   // pagination + filters
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<string>("");
@@ -57,15 +64,18 @@ export default function AdminBookingsPage() {
     return params.toString();
   }, [page, status, barberId, dateFrom, dateTo, q]);
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery<AdminResponse>({
-    queryKey: ["adminBookings", queryString],
-    queryFn: async () => {
-      const res = await api.get(`/api/bookings/admin/all?${queryString}`);
-      return res.data as AdminResponse;
-    },
-    placeholderData: keepPreviousData,
-    staleTime: 5_000,
-  });
+  const qKey = ["adminBookings", queryString] as const;
+
+  const { data, isLoading, isError, refetch, isFetching } =
+    useQuery<AdminResponse>({
+      queryKey: qKey,
+      queryFn: async () => {
+        const res = await api.get(`/api/bookings/admin/all?${queryString}`);
+        return res.data as AdminResponse;
+      },
+      placeholderData: keepPreviousData,
+      staleTime: 5_000,
+    });
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleString("de-DE", {
@@ -81,6 +91,63 @@ export default function AdminBookingsPage() {
   useEffect(() => {
     setPage(1);
   }, [status, barberId, dateFrom, dateTo, q]);
+
+  // --------- admin actions (optimistic) ----------
+  const cancelMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post(`/api/bookings/admin/${id}/cancel`, {});
+      return res.data as { booking: AdminBooking };
+    },
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: qKey });
+      const prev = qc.getQueryData<AdminResponse>(qKey);
+      if (prev) {
+        const next: AdminResponse = {
+          ...prev,
+          bookings: prev.bookings.map((b) =>
+            b._id === id ? { ...b, status: "cancelled" } : b
+          ),
+        };
+        qc.setQueryData(qKey, next);
+      }
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: qKey });
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post(`/api/bookings/admin/${id}/complete`, {});
+      return res.data as { booking: AdminBooking };
+    },
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: qKey });
+      const prev = qc.getQueryData<AdminResponse>(qKey);
+      if (prev) {
+        const next: AdminResponse = {
+          ...prev,
+          bookings: prev.bookings.map((b) =>
+            b._id === id ? { ...b, status: "completed" } : b
+          ),
+        };
+        qc.setQueryData(qKey, next);
+      }
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: qKey });
+    },
+  });
+
+  const isActing = cancelMutation.isPending || completeMutation.isPending;
 
   return (
     <div className="p-6 space-y-5">
@@ -167,40 +234,65 @@ export default function AdminBookingsPage() {
                 <th className="px-4 py-3">Barber</th>
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => (
-                <tr
-                  key={b._id}
-                  className="border-t border-neutral-100 hover:bg-neutral-50 transition"
-                >
-                  <td className="px-4 py-3 text-neutral-800">
-                    {fmtDate(b.startsAt)}
-                  </td>
-                  <td className="px-4 py-3">{b.serviceName}</td>
-                  <td className="px-4 py-3 font-medium">
-                    {b.barber?.name ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="font-medium">
-                        {b.user?.name ?? "—"}
-                      </span>
-                      <span className="text-neutral-500 text-xs">
-                        {b.user?.email ?? ""}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={b.status} />
-                  </td>
-                </tr>
-              ))}
+              {bookings.map((b) => {
+                const canCancel = b.status === "booked";
+                const canComplete = b.status === "booked";
+                return (
+                  <tr
+                    key={b._id}
+                    className="border-t border-neutral-100 hover:bg-neutral-50 transition"
+                  >
+                    <td className="px-4 py-3 text-neutral-800">
+                      {fmtDate(b.startsAt)}
+                    </td>
+                    <td className="px-4 py-3">{b.serviceName}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {b.barber?.name ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {b.user?.name ?? "—"}
+                        </span>
+                        <span className="text-neutral-500 text-xs">
+                          {b.user?.email ?? ""}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={b.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          disabled={!canCancel || isActing}
+                          onClick={() => cancelMutation.mutate(b._id)}
+                          className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
+                          title="Cancel booking"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          disabled={!canComplete || isActing}
+                          onClick={() => completeMutation.mutate(b._id)}
+                          className="rounded-md bg-neutral-900 text-white px-3 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
+                          title="Mark as completed"
+                        >
+                          Complete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {bookings.length === 0 && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-8 text-center text-neutral-500"
                   >
                     No bookings match your filters.
