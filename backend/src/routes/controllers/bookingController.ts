@@ -2,6 +2,8 @@ import { Response } from 'express';
 import { Types } from 'mongoose';
 import type { AuthRequest } from '@src/middleware/requireAuth';
 import { Appointment, type AppointmentDoc } from '@src/models/Appointment';
+import { Barber } from '@src/models/Barber';
+import { User } from '@src/models/User';
 
 /** Body shape for creating a booking (keep in sync with zod schema). */
 export interface CreateBookingBody {
@@ -45,7 +47,6 @@ export async function createBooking(
 
   const { barberId, serviceName, durationMin, startsAt, notes } = req.body;
 
-  // Basic input validation (defensive, even if you use zod on the route)
   if (!Types.ObjectId.isValid(barberId)) {
     res.status(400).json({ error: 'Invalid barberId' });
     return;
@@ -68,7 +69,6 @@ export async function createBooking(
   const barberObjId = new Types.ObjectId(barberId);
   const userObjId = new Types.ObjectId(userId);
 
-  // Prevent overlaps for the same barber (typed number via countDocuments)
   const overlap = await Appointment.countDocuments({
     barberId: barberObjId,
     status: 'booked',
@@ -131,10 +131,6 @@ export async function cancelBooking(
 /**
  * GET /api/bookings/admin/all (admin only)
  * Pagination via ?page=&limit=
- * - page: 1-based (default 1, min 1)
- * - limit: default 10 (min 1, max 100)
- * Response (backward-compatible):
- * { bookings: [...], items: [...], page, limit, total, pages }
  */
 export async function adminAllBookings(
   req: AuthRequest,
@@ -147,7 +143,7 @@ export async function adminAllBookings(
   const limit = Math.max(1, Math.min(100, Number.parseInt(rawLimit, 10) || 10));
   const skip = (page - 1) * limit;
 
-  const [bookings, total] = await Promise.all([
+  const [bookingsRaw, total] = await Promise.all([
     Appointment.find()
       .sort({ startsAt: 1 })
       .skip(skip)
@@ -157,8 +153,67 @@ export async function adminAllBookings(
     Appointment.countDocuments().exec(),
   ]);
 
-  const pages = Math.max(1, Math.ceil(total / limit));
+  const userIds = Array.from(
+    new Set(
+      bookingsRaw
+        .map((b) => String(b.userId))
+        .filter((id) => Types.ObjectId.isValid(id)),
+    ),
+  ).map((id) => new Types.ObjectId(id));
 
-  // Keep old key `bookings` for tests/legacy clients; also expose `items`.
+  const barberIds = Array.from(
+    new Set(
+      bookingsRaw
+        .map((b) => String(b.barberId))
+        .filter((id) => Types.ObjectId.isValid(id)),
+    ),
+  ).map((id) => new Types.ObjectId(id));
+
+  const [users, barbers] = await Promise.all([
+    userIds.length
+      ? User.find({ _id: { $in: userIds } })
+        .select({ name: 1, email: 1 })
+        .lean()
+        .exec()
+      : Promise.resolve([] as { _id: Types.ObjectId; name?: string; email?: string }[]),
+    barberIds.length
+      ? Barber.find({ _id: { $in: barberIds } })
+        .select({ name: 1 })
+        .lean()
+        .exec()
+      : Promise.resolve([] as { _id: Types.ObjectId; name?: string }[]),
+  ]);
+
+  const userMap = new Map<string, { id: string; name?: string; email?: string }>();
+  users.forEach((u) => {
+    const id =
+      typeof u._id === 'string'
+        ? u._id
+        : (u._id as Types.ObjectId).toHexString();
+    userMap.set(id, { id, name: u.name, email: u.email });
+  });
+
+  const barberMap = new Map<string, { id: string; name?: string }>();
+  barbers.forEach((b) => {
+    const id =
+      typeof b._id === 'string'
+        ? b._id
+        : (b._id as Types.ObjectId).toHexString();
+    barberMap.set(id, { id, name: b.name });
+  });
+
+  const bookings = bookingsRaw.map((b) => {
+    const uid = String(b.userId);
+    const bid = String(b.barberId);
+    const user = userMap.get(uid) ?? { id: uid };
+    const barber = barberMap.get(bid) ?? { id: bid };
+    return {
+      ...b,
+      user,
+      barber,
+    };
+  });
+
+  const pages = Math.max(1, Math.ceil(total / limit));
   res.json({ bookings, items: bookings, page, limit, total, pages });
 }
