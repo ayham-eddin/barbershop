@@ -4,8 +4,7 @@ import type { AuthRequest } from '@src/middleware/requireAuth';
 import { Appointment, type AppointmentDoc } from '@src/models/Appointment';
 import { Barber } from '@src/models/Barber';
 import { User } from '@src/models/User';
-import { hasOverlap } from '@src/services/bookingOverlap';
-import type { AdminUpdateBookingBody } from '@src/routes/validators/bookingAdminSchemas';
+import { hasOverlap } from '@src/services/scheduling';
 
 /** Helpers */
 function toIdString(id: unknown): string {
@@ -97,13 +96,8 @@ export async function createBooking(
   const barberObjId = new Types.ObjectId(barberId);
   const userObjId = new Types.ObjectId(userId);
 
-  // 🔁 use shared overlap check
-  const overlap = await hasOverlap({
-    barberId: barberObjId,
-    startsAt: starts,
-    endsAt: ends,
-  });
-  if (overlap) {
+  // Reuse overlap helper
+  if (await hasOverlap({ barberId: barberObjId, startsAt: starts, endsAt: ends })) {
     res.status(409).json({ error: 'Time slot not available' });
     return;
   }
@@ -161,7 +155,7 @@ export async function cancelBooking(
 
 /**
  * GET /api/bookings/admin/all (admin only)
- * Pagination + filters
+ * Pagination + filters: status, barberId, dateFrom, dateTo, q
  */
 export async function adminAllBookings(
   req: AuthRequest,
@@ -356,7 +350,7 @@ export async function adminCompleteBooking(
 
 /** PATCH /api/bookings/admin/:id (admin only) */
 export async function adminUpdateBooking(
-  req: AuthRequest<AdminUpdateBookingBody, { id: string }>,
+  req: AuthRequest<unknown, { id: string }>,
   res: Response,
 ): Promise<void> {
   const { id } = req.params;
@@ -366,121 +360,89 @@ export async function adminUpdateBooking(
   }
 
   const _id = new Types.ObjectId(id);
-  const curr = await Appointment.findById(_id).lean<AppointmentDoc | null>().exec();
-  if (!curr) {
+  const existing = await Appointment.findById(_id).lean<AppointmentDoc | null>().exec();
+  if (!existing) {
     res.status(404).json({ error: 'Booking not found' });
     return;
   }
-
-  // Start with current values
-  const next = {
-    barberId: new Types.ObjectId(curr.barberId as unknown as string),
-    serviceName: curr.serviceName,
-    durationMin: curr.durationMin,
-    startsAt: new Date(curr.startsAt),
-    endsAt: new Date(curr.endsAt),
-    status: curr.status,
-    notes: curr.notes,
-  };
-
-  // Apply incoming changes
-  if (req.body.barberId) {
-    if (!Types.ObjectId.isValid(req.body.barberId)) {
-      res.status(400).json({ error: 'Invalid barberId' });
-      return;
-    }
-    next.barberId = new Types.ObjectId(req.body.barberId);
+  if (existing.status !== 'booked') {
+    res.status(409).json({ error: 'Only booked appointments can be edited' });
+    return;
   }
 
-  if (req.body.startsAt) {
-    const s = new Date(req.body.startsAt);
+  // Build updates
+  const patch = req.body as Partial<{
+    startsAt: string;
+    durationMin: number;
+    barberId: string;
+    serviceName: string;
+    notes: string;
+  }>;
+
+  const updates: Record<string, unknown> = {};
+  let startsAt = new Date(existing.startsAt);
+  let durationMin = existing.durationMin;
+  let barberId = new Types.ObjectId(existing.barberId as unknown as string);
+
+  if (typeof patch.startsAt === 'string') {
+    const s = new Date(patch.startsAt);
     if (Number.isNaN(s.getTime())) {
       res.status(400).json({ error: 'Invalid startsAt (ISO expected)' });
       return;
     }
-    next.startsAt = s;
+    startsAt = s;
   }
 
-  if (typeof req.body.durationMin === 'number') {
-    const d = req.body.durationMin;
-    if (!Number.isFinite(d) || d < 5 || d > 480) {
-      res.status(400).json({ error: 'Invalid durationMin (5..480)' });
+  if (typeof patch.durationMin === 'number') {
+    if (!Number.isFinite(patch.durationMin) || patch.durationMin <= 0 || patch.durationMin > 480) {
+      res.status(400).json({ error: 'Invalid durationMin (1..480)' });
       return;
     }
-    next.durationMin = d;
+    durationMin = patch.durationMin;
   }
 
-  if (typeof req.body.serviceName === 'string') {
-    next.serviceName = req.body.serviceName;
-  }
-
-  // recompute endsAt if needed
-  next.endsAt = new Date(next.startsAt.getTime() + next.durationMin * 60_000);
-
-  // status transition rules
-  if (req.body.status) {
-    const target = req.body.status;
-    if (curr.status === 'booked') {
-      // can go to cancelled or completed (or stay booked)
-      if (!['booked', 'cancelled', 'completed'].includes(target)) {
-        res.status(400).json({ error: 'Invalid status transition' });
-        return;
-      }
-    } else {
-      // from cancelled/completed allow only to booked (if you want to revive),
-      // or same state. Adjust as you prefer.
-      if (!['booked', curr.status].includes(target)) {
-        res.status(400).json({ error: 'Invalid status transition' });
-        return;
-      }
-    }
-    next.status = target;
-  }
-
-  if (typeof req.body.notes === 'string') {
-    next.notes = req.body.notes;
-  }
-
-  // If time/barber/duration changed and target is 'booked', check overlap
-  const timeOrBarberChanged =
-    next.startsAt.getTime() !== new Date(curr.startsAt).getTime() ||
-    next.endsAt.getTime() !== new Date(curr.endsAt).getTime() ||
-    toIdString(next.barberId) !== toIdString(curr.barberId);
-
-  if (next.status === 'booked' && timeOrBarberChanged) {
-    const conflict = await hasOverlap({
-      barberId: next.barberId,
-      startsAt: next.startsAt,
-      endsAt: next.endsAt,
-      excludeId: _id, // exclude self when editing
-    });
-    if (conflict) {
-      res.status(409).json({ error: 'Time slot not available' });
+  if (typeof patch.barberId === 'string') {
+    if (!Types.ObjectId.isValid(patch.barberId)) {
+      res.status(400).json({ error: 'Invalid barberId' });
       return;
     }
+    barberId = new Types.ObjectId(patch.barberId);
+    updates.barberId = barberId;
   }
 
-  // Persist
+  if (typeof patch.serviceName === 'string') {
+    updates.serviceName = patch.serviceName;
+  }
+  if (typeof patch.notes === 'string') {
+    updates.notes = patch.notes;
+  }
+
+  // derived endsAt
+  const endsAt = new Date(startsAt.getTime() + durationMin * 60_000);
+  updates.startsAt = startsAt;
+  updates.endsAt = endsAt;
+  updates.durationMin = durationMin;
+
+  // Overlap check excluding current booking
+  const overlap = await hasOverlap({
+    barberId,
+    startsAt,
+    endsAt,
+    excludeId: _id,
+  });
+  if (overlap) {
+    res.status(409).json({ error: 'Time slot not available' });
+    return;
+  }
+
   const updated = await Appointment.findByIdAndUpdate(
     _id,
-    {
-      $set: {
-        barberId: next.barberId,
-        serviceName: next.serviceName,
-        durationMin: next.durationMin,
-        startsAt: next.startsAt,
-        endsAt: next.endsAt,
-        status: next.status,
-        notes: next.notes,
-      },
-    },
+    { $set: updates },
     { new: true },
-  )
-    .lean<AppointmentDoc | null>()
-    .exec();
+  ).lean<AppointmentDoc | null>().exec();
 
   if (!updated) {
-    res.status(404).json({ error: 'Booking not found after update' });
+    res.status(404).json({ error: 'Booking not found' });
     return;
   }
 

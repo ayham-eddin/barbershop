@@ -6,6 +6,9 @@ import {
   keepPreviousData,
 } from "@tanstack/react-query";
 import api from "../../api/client";
+import Modal from "../../components/Modal";
+import { patchAdminBooking } from "../../api/adminBookings";
+import TimeField from "../../components/TimeField";
 
 interface AdminBooking {
   _id: string;
@@ -42,7 +45,7 @@ export default function AdminBookingsPage() {
   const [dateTo, setDateTo] = useState<string>("");
   const [q, setQ] = useState<string>("");
 
-  // load barbers for the filter dropdown
+  // load barbers for the filter dropdown + edit form
   const [barbers, setBarbers] = useState<Barber[]>([]);
   useEffect(() => {
     (async () => {
@@ -147,7 +150,59 @@ export default function AdminBookingsPage() {
     },
   });
 
-  const isActing = cancelMutation.isPending || completeMutation.isPending;
+  // --------- edit modal state ----------
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editBarberId, setEditBarberId] = useState<string>("");
+  const [editServiceName, setEditServiceName] = useState<string>("");
+  const [editDurationMin, setEditDurationMin] = useState<number>(30);
+  const [editStartsAtLocal, setEditStartsAtLocal] = useState<string>(""); // yyyy-MM-ddTHH:mm
+  const [editNotes, setEditNotes] = useState<string>("");
+
+  function openEdit(b: AdminBooking) {
+    setEditId(b._id);
+    setEditBarberId(b.barber?.id ?? "");
+    setEditServiceName(b.serviceName);
+    setEditDurationMin(b.durationMin);
+    // convert ISO -> local input value
+    const d = new Date(b.startsAt);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate()
+    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setEditStartsAtLocal(local);
+    setEditNotes("");
+    setEditOpen(true);
+  }
+
+  const patchMutation = useMutation({
+    mutationFn: async () => {
+      if (!editId) return null;
+      // convert local -> ISO
+      const startsAt = editStartsAtLocal
+        ? new Date(editStartsAtLocal).toISOString()
+        : undefined;
+
+      const patch: Record<string, unknown> = {};
+      if (startsAt) patch.startsAt = startsAt;
+      if (Number.isFinite(editDurationMin)) patch.durationMin = editDurationMin;
+      if (editBarberId) patch.barberId = editBarberId;
+      if (editServiceName.trim()) patch.serviceName = editServiceName.trim();
+      if (editNotes.trim()) patch.notes = editNotes.trim();
+
+      return patchAdminBooking(editId, patch);
+    },
+    onSuccess: () => {
+      setEditOpen(false);
+      setEditId(null);
+      qc.invalidateQueries({ queryKey: qKey }).catch(() => {});
+    },
+  });
+
+  const isActing =
+    cancelMutation.isPending ||
+    completeMutation.isPending ||
+    patchMutation.isPending;
 
   return (
     <div className="p-6 space-y-5">
@@ -269,6 +324,18 @@ export default function AdminBookingsPage() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <button
+                          onClick={() => openEdit(b)}
+                          disabled={b.status !== "booked" || isActing}
+                          className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
+                          title={
+                            b.status !== "booked"
+                              ? "Only booked appointments can be edited"
+                              : "Edit booking"
+                          }
+                        >
+                          Edit
+                        </button>
+                        <button
                           disabled={!canCancel || isActing}
                           onClick={() => cancelMutation.mutate(b._id)}
                           className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
@@ -324,6 +391,99 @@ export default function AdminBookingsPage() {
           </div>
         </div>
       )}
+
+      {/* Edit Modal */}
+      <Modal
+        open={editOpen}
+        title="Edit booking"
+        onClose={() => setEditOpen(false)}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            patchMutation.mutate();
+          }}
+          className="space-y-3"
+        >
+          <TimeField
+            value={editStartsAtLocal}
+            onChange={(iso) => setEditStartsAtLocal(iso)}
+            label="Starts at"
+            required
+          />
+
+          <label className="block text-sm font-medium text-neutral-700">
+            Duration (min)
+            <input
+              type="number"
+              min={5}
+              max={480}
+              value={editDurationMin}
+              onChange={(e) => setEditDurationMin(Number(e.target.value))}
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+              required
+            />
+          </label>
+
+          <label className="block text-sm font-medium text-neutral-700">
+            Barber
+            <select
+              value={editBarberId}
+              onChange={(e) => setEditBarberId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+              required
+            >
+              <option value="" disabled>
+                Select barber…
+              </option>
+              {barbers.map((b) => (
+                <option key={b._id} value={b._id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-sm font-medium text-neutral-700">
+            Service name
+            <input
+              type="text"
+              value={editServiceName}
+              onChange={(e) => setEditServiceName(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+              required
+            />
+          </label>
+
+          <label className="block text-sm font-medium text-neutral-700">
+            Notes (optional)
+            <input
+              type="text"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+              placeholder="Optional note for this booking"
+            />
+          </label>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setEditOpen(false)}
+              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={patchMutation.isPending}
+              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
+            >
+              {patchMutation.isPending ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

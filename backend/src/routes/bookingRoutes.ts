@@ -15,11 +15,8 @@ import { validateBody, validateParams } from '@src/middleware/validate';
 import {
   createBookingSchema,
   cancelBookingSchema,
-} from './validators/bookingSchemas';
-import {
-  adminBookingIdParams,
   adminUpdateBookingSchema,
-} from './validators/bookingAdminSchemas';
+} from './validators/bookingSchemas';
 
 const router = Router();
 
@@ -35,7 +32,6 @@ router.post(
 
 /** 🧑‍💼 Admin view + actions */
 router.get('/admin/all', requireAuth, requireAdmin, adminAllBookings);
-
 router.post(
   '/admin/:id/cancel',
   requireAuth,
@@ -43,7 +39,6 @@ router.post(
   validateParams(cancelBookingSchema),
   adminCancelBooking,
 );
-
 router.post(
   '/admin/:id/complete',
   requireAuth,
@@ -51,12 +46,11 @@ router.post(
   validateParams(cancelBookingSchema),
   adminCompleteBooking,
 );
-
 router.patch(
   '/admin/:id',
   requireAuth,
   requireAdmin,
-  validateParams(adminBookingIdParams),
+  validateParams(cancelBookingSchema), // validates :id
   validateBody(adminUpdateBookingSchema),
   adminUpdateBooking,
 );
@@ -70,8 +64,7 @@ router.get('/availability', async (req, res) => {
     typeof date !== 'string' ||
     typeof durationMin !== 'string'
   ) {
-    res.status(400).json({ error: 'Bad query' });
-    return;
+    return res.status(400).json({ error: 'Bad query' });
   }
 
   const slots = await getAvailableSlots(
@@ -80,7 +73,7 @@ router.get('/availability', async (req, res) => {
     Number(durationMin),
   );
 
-  res.json({ slots });
+  return res.json({ slots });
 });
 
 export default router;

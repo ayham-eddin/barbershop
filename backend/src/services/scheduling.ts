@@ -110,3 +110,23 @@ export async function getAvailableSlots(
 
   return slots;
 }
+
+export async function hasOverlap(params: {
+  barberId: Types.ObjectId;
+  startsAt: Date;
+  endsAt: Date;
+  excludeId?: Types.ObjectId;
+}): Promise<boolean> {
+  const { barberId, startsAt, endsAt, excludeId } = params;
+
+  const q: Record<string, unknown> = {
+    barberId,
+    status: 'booked',
+    startsAt: { $lt: endsAt },
+    endsAt: { $gt: startsAt },
+  };
+  if (excludeId) q._id = { $ne: excludeId };
+
+  const n = await Appointment.countDocuments(q).exec();
+  return n > 0;
+}
