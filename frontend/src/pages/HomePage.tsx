@@ -13,7 +13,8 @@ export default function HomePage() {
 
   useEffect(() => {
     setRole((localStorage.getItem('role') as 'user' | 'admin' | null) || null);
-    const onStorage = () => setRole((localStorage.getItem('role') as 'user' | 'admin' | null) || null);
+    const onStorage = () =>
+      setRole((localStorage.getItem('role') as 'user' | 'admin' | null) || null);
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
@@ -29,6 +30,9 @@ export default function HomePage() {
     isLoading: bLoading,
     isError: bError,
   } = useQuery({ queryKey: ["barbers"], queryFn: getBarbers });
+
+  const servicesCount = services?.length ?? 0;
+  const barbersCount  = barbers?.length ?? 0;
 
   return (
     <div className="space-y-14">
@@ -47,7 +51,6 @@ export default function HomePage() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            {/* Show "Book now" only for users, admins get Admin link */}
             {role !== 'admin' ? (
               <Link
                 to="/book"
@@ -56,12 +59,20 @@ export default function HomePage() {
                 Book now
               </Link>
             ) : (
-              <Link
-                to="/admin/bookings"
-                className="inline-flex items-center rounded-lg bg-amber-400 px-5 py-2.5 text-neutral-900 font-semibold hover:bg-amber-300 transition shadow-sm"
-              >
-                Go to Admin
-              </Link>
+              <>
+                <Link
+                  to="/admin/bookings"
+                  className="inline-flex items-center rounded-lg bg-amber-400 px-5 py-2.5 text-neutral-900 font-semibold hover:bg-amber-300 transition shadow-sm"
+                >
+                  Admin Bookings
+                </Link>
+                <Link
+                  to="/admin/services"
+                  className="inline-flex items-center rounded-lg border border-amber-400/70 text-white px-5 py-2.5 hover:bg-neutral-800 transition"
+                >
+                  Manage Services
+                </Link>
+              </>
             )}
 
             <a
@@ -83,7 +94,14 @@ export default function HomePage() {
       {/* SERVICES */}
       <section id="services" className="space-y-5">
         <div className="flex items-end justify-between">
-          <h2 className="text-2xl font-semibold text-neutral-900">Services</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-semibold text-neutral-900">Services</h2>
+            <CountBadge
+              loading={sLoading}
+              count={servicesCount}
+              label="items"
+            />
+          </div>
         </div>
 
         {sLoading && <ListSkeleton />}
@@ -104,7 +122,16 @@ export default function HomePage() {
 
       {/* BARBERS */}
       <section id="barbers" className="space-y-5">
-        <h2 className="text-2xl font-semibold text-neutral-900">Barbers</h2>
+        <div className="flex items-end justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-semibold text-neutral-900">Barbers</h2>
+            <CountBadge
+              loading={bLoading}
+              count={barbersCount}
+              label="profiles"
+            />
+          </div>
+        </div>
 
         {bLoading && <ListSkeleton />}
         {bError && <ErrorBox text="Couldn’t load barbers. Please retry." />}
@@ -127,7 +154,22 @@ export default function HomePage() {
 
 /* ---------------------------- UI SUBCOMPONENTS ---------------------------- */
 
+function CountBadge({ loading, count, label }: { loading: boolean; count: number; label: string }) {
+  if (loading) {
+    return (
+      <span className="h-6 w-16 rounded-full bg-neutral-200 animate-pulse inline-block" />
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700">
+      <span className="min-w-[1ch] text-center">{count}</span>
+      <span className="text-neutral-500">{label}</span>
+    </span>
+  );
+}
+
 function ServiceCard({ service, role }: { service: Service; role: 'user' | 'admin' | null }) {
+  const isAdmin = role === 'admin';
   return (
     <article className="group relative rounded-2xl bg-white border border-neutral-200 p-5 shadow-sm hover:shadow-md transition">
       <div className="flex items-start justify-between gap-4">
@@ -138,7 +180,7 @@ function ServiceCard({ service, role }: { service: Service; role: 'user' | 'admi
       </div>
       <p className="text-sm text-neutral-600 mt-1">{service.durationMin} min</p>
 
-      {role !== 'admin' ? (
+      {!isAdmin ? (
         <Link
           to="/book"
           className="mt-4 inline-flex items-center rounded-lg bg-neutral-900 text-white px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 transition"
@@ -147,7 +189,7 @@ function ServiceCard({ service, role }: { service: Service; role: 'user' | 'admi
         </Link>
       ) : (
         <Link
-          to="/admin/bookings"
+          to="/admin/services"
           className="mt-4 inline-flex items-center rounded-lg bg-neutral-900 text-white px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 transition"
         >
           Manage
