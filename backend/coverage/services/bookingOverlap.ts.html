@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for models/Service.ts</title>
+    <title>Code coverage report for services/bookingOverlap.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">models</a> Service.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">services</a> bookingOverlap.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">87.5% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>4/4</span>
+                <span class='fraction'>7/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>1/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">87.5% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>4/4</span>
+                <span class='fraction'>7/8</span>
             </div>
         
             
@@ -86,11 +86,16 @@
 <a name='L21'></a><a href='#L21'>21</a>
 <a name='L22'></a><a href='#L22'>22</a>
 <a name='L23'></a><a href='#L23'>23</a>
-<a name='L24'></a><a href='#L24'>24</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">13x</span>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -102,36 +107,52 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Schema, model, type Document } from 'mongoose';
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// src/services/bookingOverlap.ts
+import { Types } from 'mongoose';
+import { Appointment } from '@src/models/Appointment';
 &nbsp;
-export interface ServiceDoc extends Document {
-  name: string;
-  durationMin: number;
-  price: number;
-  createdAt: Date;
-  updatedAt: Date;
+/**
+ * Checks if a time window overlaps with any existing *booked* appointment
+ * for the given barber. Optionally excludes one booking (when editing).
+ */
+export async function hasOverlap(options: {
+  barberId: Types.ObjectId;
+  startsAt: Date;
+  endsAt: Date;
+  excludeId?: Types.ObjectId;
+}): Promise&lt;boolean&gt; {
+  const { barberId, startsAt, endsAt, excludeId } = options;
+&nbsp;
+  const filter: Record&lt;string, unknown&gt; = {
+    barberId,
+    status: 'booked',
+    startsAt: { $lt: endsAt },
+    endsAt: { $gt: startsAt },
+  };
+&nbsp;
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (excludeId) {
+<span class="cstat-no" title="statement not covered" >    filter._id = { $ne: excludeId };</span>
+  }
+&nbsp;
+  const count = await Appointment.countDocuments(filter).exec();
+  return count &gt; 0;
 }
-&nbsp;
-const ServiceSchema = new Schema&lt;ServiceDoc&gt;(
-  {
-    name: { type: String, required: true, trim: true },
-    durationMin: { type: Number, required: true, min: 5 },
-    price: { type: Number, required: true, min: 0 },
-  },
-  { timestamps: true },
-);
-&nbsp;
-// 🔒 Enforce unique names at the DB level
-ServiceSchema.index({ name: 1 }, { unique: true });
-&nbsp;
-export const Service = model&lt;ServiceDoc&gt;('Service', ServiceSchema);
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->

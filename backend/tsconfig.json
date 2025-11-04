@@ -10,14 +10,12 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-
-    "rootDir": ".",                // <-- allow src, test, scripts for IDE
+    "rootDir": ".",
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
       "@src/*": ["src/*"]
     },
-
     "types": ["node", "jest"]
   },
   "include": [
