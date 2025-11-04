@@ -9,6 +9,8 @@ import api from "../../api/client";
 import Modal from "../../components/Modal";
 import { patchAdminBooking } from "../../api/adminBookings";
 import TimeField from "../../components/TimeField";
+import toast from "react-hot-toast";
+import type { AxiosError } from "axios";
 
 interface AdminBooking {
   _id: string;
@@ -32,6 +34,21 @@ interface AdminResponse {
 interface Barber {
   _id: string;
   name: string;
+}
+
+/** Extract human-friendly error message from Axios or generic errors */
+function errorMessage(err: unknown): string {
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object") {
+    const ax = err as AxiosError<{ error?: string; message?: string }>;
+    return (
+      ax.response?.data?.error ||
+      ax.response?.data?.message ||
+      ax.message ||
+      "Request failed"
+    );
+  }
+  return "Request failed";
 }
 
 export default function AdminBookingsPage() {
@@ -115,8 +132,12 @@ export default function AdminBookingsPage() {
       }
       return { prev };
     },
-    onError: (_err, _id, ctx) => {
+    onSuccess: () => {
+      toast.success("Booking cancelled.");
+    },
+    onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
+      toast.error(errorMessage(err));
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: qKey });
@@ -142,8 +163,12 @@ export default function AdminBookingsPage() {
       }
       return { prev };
     },
-    onError: (_err, _id, ctx) => {
+    onSuccess: () => {
+      toast.success("Booking marked as completed.");
+    },
+    onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
+      toast.error(errorMessage(err));
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: qKey });
@@ -193,9 +218,15 @@ export default function AdminBookingsPage() {
       return patchAdminBooking(editId, patch);
     },
     onSuccess: () => {
+      toast.success("Booking updated.");
       setEditOpen(false);
       setEditId(null);
-      qc.invalidateQueries({ queryKey: qKey }).catch(() => {});
+      (async () => {
+        await qc.invalidateQueries({ queryKey: qKey });
+      })().catch(() => {});
+    },
+    onError: (err) => {
+      toast.error(errorMessage(err));
     },
   });
 
