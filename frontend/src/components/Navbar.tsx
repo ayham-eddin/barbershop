@@ -22,7 +22,6 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
         </Link>
 
         <div className="flex items-center gap-6">
-          {/* User booking link */}
           {(!token || role === 'user') && (
             <NavLink
               to="/book"
@@ -32,7 +31,6 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
             </NavLink>
           )}
 
-          {/* Admin links */}
           {token && role === 'admin' && (
             <>
               <NavLink to="/admin/bookings" className={linkClass}>
@@ -44,14 +42,12 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
             </>
           )}
 
-          {/* User dashboard */}
           {token && role === 'user' && (
             <NavLink to="/dashboard" className={linkClass}>
               My Bookings
             </NavLink>
           )}
 
-          {/* Auth links */}
           {!token && <NavLink to="/login" className={linkClass}>Login</NavLink>}
 
           {token && (
