@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminBookingsPage from './pages/Admin/AdminBookingsPage';
 import BookingPage from './pages/BookingPage';
+import AdminServicesPage from './pages/Admin/AdminServicesPage'; // ⬅️ add this
 import { useState, useEffect } from 'react';
 
 export default function App() {
@@ -14,7 +15,6 @@ export default function App() {
     (localStorage.getItem('role') as 'user' | 'admin' | null) || null
   );
 
-  // keep role in sync if token/role in localStorage change (e.g., login/register)
   useEffect(() => {
     const onStorage = () => {
       setToken(localStorage.getItem('token'));
@@ -33,7 +33,6 @@ export default function App() {
 
   return (
     <Router>
-      {/* Background accent */}
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-amber-100/30 text-neutral-900">
         <Navbar token={token} role={role} onLogout={handleLogout} />
 
@@ -55,6 +54,10 @@ export default function App() {
             <Route
               path="/admin/bookings"
               element={token && role === 'admin' ? <AdminBookingsPage /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/admin/services"   // ⬅️ new route
+              element={token && role === 'admin' ? <AdminServicesPage /> : <Navigate to="/login" />}
             />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>

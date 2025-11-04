@@ -5,6 +5,25 @@ import { Appointment, type AppointmentDoc } from '@src/models/Appointment';
 import { Barber } from '@src/models/Barber';
 import { User } from '@src/models/User';
 
+/** Helpers */
+function toIdString(id: unknown): string {
+  if (typeof id === 'string') return id;
+  try {
+    return (id as Types.ObjectId).toHexString();
+  } catch {
+    return String(id);
+  }
+}
+
+function isValidObjectIdMaybeString(id: unknown): boolean {
+  try {
+    const s = toIdString(id);
+    return Types.ObjectId.isValid(s);
+  } catch {
+    return false;
+  }
+}
+
 /** Body shape for creating a booking (keep in sync with zod schema). */
 export interface CreateBookingBody {
   barberId: string;
@@ -46,8 +65,7 @@ export async function createBooking(
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
-
-  // 🚫 Block admins from creating bookings via public flow
+  // Block admins from public booking
   if (role === 'admin') {
     res.status(403).json({ error: 'Admins cannot create bookings' });
     return;
@@ -115,6 +133,10 @@ export async function cancelBooking(
   }
 
   const bookingId = req.params.id;
+  if (!Types.ObjectId.isValid(bookingId)) {
+    res.status(400).json({ error: 'Invalid id' });
+    return;
+  }
 
   const updated = await Appointment.findOneAndUpdate(
     {
@@ -138,16 +160,12 @@ export async function cancelBooking(
 
 /**
  * GET /api/bookings/admin/all (admin only)
- * Pagination via ?page=&limit=
- * Optional filters:
+ * Pagination + filters:
  *   - status=booked|cancelled|completed
  *   - barberId=<ObjectId>
  *   - dateFrom=YYYY-MM-DD
  *   - dateTo=YYYY-MM-DD
  *   - q=<search in user name/email>
- * Response:
- * { bookings: [...], items: [...], page, limit, total, pages }
- * Each booking includes: user {id,name?,email?}, barber {id,name?}
  */
 export async function adminAllBookings(
   req: AuthRequest,
@@ -162,16 +180,19 @@ export async function adminAllBookings(
 
   const filter: Record<string, unknown> = {};
 
+  // status
   const status = (req.query.status as string | undefined)?.toLowerCase();
   if (status && ['booked', 'cancelled', 'completed'].includes(status)) {
     filter.status = status;
   }
 
+  // barber
   const barberId = req.query.barberId as string | undefined;
   if (barberId && Types.ObjectId.isValid(barberId)) {
     filter.barberId = new Types.ObjectId(barberId);
   }
 
+  // date range
   const dateFrom = req.query.dateFrom as string | undefined;
   const dateTo = req.query.dateTo as string | undefined;
   if (dateFrom || dateTo) {
@@ -184,11 +205,10 @@ export async function adminAllBookings(
       const d = new Date(`${dateTo}T23:59:59.999Z`);
       if (!Number.isNaN(d.getTime())) range.$lte = d;
     }
-    if (range.$gte || range.$lte) {
-      filter.startsAt = range;
-    }
+    if (range.$gte || range.$lte) filter.startsAt = range;
   }
 
+  // q: search user by name/email
   const q = (req.query.q as string | undefined)?.trim();
   if (q) {
     const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -211,14 +231,14 @@ export async function adminAllBookings(
       return;
     }
 
-    const userIdList = usersMatched.map((u) =>
-      typeof u._id === 'string'
-        ? new Types.ObjectId(u._id)
-        : (u._id as Types.ObjectId),
-    );
+    const userIdList = usersMatched.map((u) => {
+      const s = toIdString(u._id);
+      return new Types.ObjectId(s);
+    });
     filter.userId = { $in: userIdList };
   }
 
+  // query DB
   const [bookingsRaw, total] = await Promise.all([
     Appointment.find(filter)
       .sort({ startsAt: 1 })
@@ -229,87 +249,53 @@ export async function adminAllBookings(
     Appointment.countDocuments(filter).exec(),
   ]);
 
+  // Build enrichment maps with safe id strings
   const userIdStrings = Array.from(
-    new Set(
-      bookingsRaw
-        .map((b) => {
-          try {
-            return (b.userId as unknown as Types.ObjectId).toHexString();
-          } catch {
-            return String(b.userId);
-          }
-        })
-        .filter((id) => Types.ObjectId.isValid(id)),
-    ),
-  );
+    new Set(bookingsRaw.map((b) => toIdString(b.userId))),
+  ).filter(isValidObjectIdMaybeString);
 
   const barberIdStrings = Array.from(
-    new Set(
-      bookingsRaw
-        .map((b) => {
-          try {
-            return (b.barberId as unknown as Types.ObjectId).toHexString();
-          } catch {
-            return String(b.barberId);
-          }
-        })
-        .filter((id) => Types.ObjectId.isValid(id)),
-    ),
-  );
-
-  const userIds = userIdStrings.map((id) => new Types.ObjectId(id));
-  const barberIds = barberIdStrings.map((id) => new Types.ObjectId(id));
+    new Set(bookingsRaw.map((b) => toIdString(b.barberId))),
+  ).filter(isValidObjectIdMaybeString);
 
   const [users, barbers] = await Promise.all([
-    userIds.length
-      ? User.find({ _id: { $in: userIds } })
-          .select({ name: 1, email: 1 })
-          .lean()
-          .exec()
-      : Promise.resolve([] as { _id: Types.ObjectId; name?: string; email?: string }[]),
-    barberIds.length
-      ? Barber.find({ _id: { $in: barberIds } })
-          .select({ name: 1 })
-          .lean()
-          .exec()
+    userIdStrings.length
+      ? User.find({ _id: { $in: userIdStrings } })
+        .select({ name: 1, email: 1 })
+        .lean()
+        .exec()
+      : Promise.resolve(
+          [] as { _id: Types.ObjectId; name?: string; email?: string }[],
+      ),
+    barberIdStrings.length
+      ? Barber.find({ _id: { $in: barberIdStrings } })
+        .select({ name: 1 })
+        .lean()
+        .exec()
       : Promise.resolve([] as { _id: Types.ObjectId; name?: string }[]),
   ]);
 
-  const userMap = new Map<string, { id: string; name?: string; email?: string }>();
+  const userMap = new Map<
+    string,
+    { id: string; name?: string; email?: string }
+  >();
   users.forEach((u) => {
-    const id =
-      typeof u._id === 'string'
-        ? u._id
-        : (u._id as Types.ObjectId).toHexString();
+    const id = toIdString(u._id);
     userMap.set(id, { id, name: u.name, email: u.email });
   });
 
   const barberMap = new Map<string, { id: string; name?: string }>();
   barbers.forEach((b) => {
-    const id =
-      typeof b._id === 'string'
-        ? b._id
-        : (b._id as Types.ObjectId).toHexString();
+    const id = toIdString(b._id);
     barberMap.set(id, { id, name: b.name });
   });
 
   const bookings = bookingsRaw.map((b) => {
-    const uid =
-      typeof b.userId === 'string'
-        ? b.userId
-        : (b.userId as unknown as Types.ObjectId).toHexString();
-    const bid =
-      typeof b.barberId === 'string'
-        ? b.barberId
-        : (b.barberId as unknown as Types.ObjectId).toHexString();
-
+    const uid = toIdString(b.userId);
+    const bid = toIdString(b.barberId);
     const user = userMap.get(uid) ?? { id: uid };
     const barber = barberMap.get(bid) ?? { id: bid };
-    return {
-      ...b,
-      user,
-      barber,
-    };
+    return { ...b, user, barber };
   });
 
   const pages = Math.max(1, Math.ceil(total / limit));
@@ -322,12 +308,13 @@ export async function adminCancelBooking(
   res: Response,
 ): Promise<void> {
   const bookingId = req.params.id;
+  if (!Types.ObjectId.isValid(bookingId)) {
+    res.status(400).json({ error: 'Invalid id' });
+    return;
+  }
 
   const updated = await Appointment.findOneAndUpdate(
-    {
-      _id: new Types.ObjectId(bookingId),
-      status: 'booked',
-    },
+    { _id: new Types.ObjectId(bookingId), status: 'booked' },
     { $set: { status: 'cancelled' } },
     { new: true },
   )
@@ -335,11 +322,12 @@ export async function adminCancelBooking(
     .exec();
 
   if (!updated) {
-    res.status(404).json({ error: 'Booking not found or not cancellable' });
-    return;
+    res
+      .status(404)
+      .json({ error: 'Booking not found or not cancellable' });
+  } else {
+    res.json({ booking: updated });
   }
-
-  res.json({ booking: updated });
 }
 
 /** POST /api/bookings/admin/:id/complete (admin only) */
@@ -348,12 +336,13 @@ export async function adminCompleteBooking(
   res: Response,
 ): Promise<void> {
   const bookingId = req.params.id;
+  if (!Types.ObjectId.isValid(bookingId)) {
+    res.status(400).json({ error: 'Invalid id' });
+    return;
+  }
 
   const updated = await Appointment.findOneAndUpdate(
-    {
-      _id: new Types.ObjectId(bookingId),
-      status: 'booked',
-    },
+    { _id: new Types.ObjectId(bookingId), status: 'booked' },
     { $set: { status: 'completed' } },
     { new: true },
   )
@@ -361,9 +350,10 @@ export async function adminCompleteBooking(
     .exec();
 
   if (!updated) {
-    res.status(404).json({ error: 'Booking not found or not completable' });
-    return;
+    res
+      .status(404)
+      .json({ error: 'Booking not found or not completable' });
+  } else {
+    res.json({ booking: updated });
   }
-
-  res.json({ booking: updated });
 }

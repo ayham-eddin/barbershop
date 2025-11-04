@@ -7,8 +7,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ token, role, onLogout }: NavbarProps) {
-  const linkClass =
-    'text-sm font-medium text-gray-300 hover:text-white transition-colors';
+  const linkClass = 'text-sm font-medium text-gray-300 hover:text-white transition-colors';
 
   return (
     <nav className="sticky top-0 z-10 bg-neutral-900/90 backdrop-blur border-b border-neutral-800">
@@ -23,7 +22,7 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
         </Link>
 
         <div className="flex items-center gap-6">
-          {/* Only show Book for regular users */}
+          {/* User booking link */}
           {(!token || role === 'user') && (
             <NavLink
               to="/book"
@@ -33,19 +32,27 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
             </NavLink>
           )}
 
-          {/* Admin link when admin is logged in */}
+          {/* Admin links */}
           {token && role === 'admin' && (
-            <NavLink to="/admin/bookings" className={linkClass}>
-              Admin
-            </NavLink>
+            <>
+              <NavLink to="/admin/bookings" className={linkClass}>
+                Bookings
+              </NavLink>
+              <NavLink to="/admin/services" className={linkClass}>
+                Services
+              </NavLink>
+            </>
           )}
 
-          {!token && <NavLink to="/login" className={linkClass}>Login</NavLink>}
+          {/* User dashboard */}
           {token && role === 'user' && (
             <NavLink to="/dashboard" className={linkClass}>
               My Bookings
             </NavLink>
           )}
+
+          {/* Auth links */}
+          {!token && <NavLink to="/login" className={linkClass}>Login</NavLink>}
 
           {token && (
             <button
