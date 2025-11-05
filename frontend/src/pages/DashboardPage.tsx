@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMyBookings, cancelBooking, type Booking } from '../api/bookings';
 import toast from 'react-hot-toast';
+import Spinner from '../components/Spinner';
 
 const dtFmt = new Intl.DateTimeFormat('de-DE', {
   dateStyle: 'medium',
@@ -18,6 +19,10 @@ export default function DashboardPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['me', 'bookings'],
     queryFn: getMyBookings,
+    
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   const cancelMut = useMutation({
@@ -137,7 +142,6 @@ function BookingCard({
         {dtFmt.format(new Date(booking.startsAt))}
       </p>
 
-      {/* NEW: Notes */}
       {booking.notes && (
         <p className="text-sm text-neutral-600 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2">
           <span className="font-medium text-neutral-700">Note:</span> {booking.notes}
@@ -165,7 +169,14 @@ function BookingCard({
                 : 'Cancel this booking'
             }
           >
-            {cancelling ? 'Cancelling…' : 'Cancel'}
+            {cancelling ? (
+              <span className="inline-flex items-center gap-2">
+                <Spinner aria-label="Cancelling" />
+                Cancelling…
+              </span>
+            ) : (
+              'Cancel'
+            )}
           </button>
         </div>
       </div>
