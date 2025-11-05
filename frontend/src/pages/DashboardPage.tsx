@@ -121,6 +121,8 @@ function BookingCard({
   const past = isPast(booking.startsAt);
   const canCancel = booking.status === 'booked' && !past;
 
+  const barberLabel = booking.barber?.name ?? booking.barber?.id ?? booking.barberId;
+
   return (
     <article className="rounded-2xl bg-white border border-neutral-200 p-5 shadow-sm flex flex-col gap-2">
       <div className="flex items-start justify-between gap-3">
@@ -143,7 +145,7 @@ function BookingCard({
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-neutral-500">Barber: {booking.barberId}</p>
+        <p className="text-xs text-neutral-500">Barber: {barberLabel}</p>
         <div className="flex items-center gap-2">
           <a
             href="/book"

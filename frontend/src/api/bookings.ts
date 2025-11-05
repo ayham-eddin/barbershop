@@ -10,7 +10,8 @@ export type Booking = {
   startsAt: string; // ISO
   endsAt: string;   // ISO
   status: 'booked' | 'cancelled' | 'completed';
-  notes?: string;   // ← optional notes from backend
+  notes?: string;
+  barber?: { id: string; name?: string };
 };
 
 export async function getAvailability(params: {
