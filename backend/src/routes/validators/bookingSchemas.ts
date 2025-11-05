@@ -1,3 +1,4 @@
+// backend/src/routes/validators/bookingSchemas.ts
 import { z } from 'zod';
 import { Types } from 'mongoose';
 
@@ -20,12 +21,14 @@ export const cancelBookingSchema = z.object({
 });
 export type CancelBookingParams = z.infer<typeof cancelBookingSchema>;
 
-export const adminUpdateBookingSchema = z.object({
-  startsAt: z.string().datetime().optional(),         // ISO string
-  durationMin: z.number().int().min(5).max(480).optional(),
-  barberId: objectId.optional(),
-  serviceName: z.string().min(2).max(100).optional(),
-  notes: z.string().max(500).optional(),
-}).refine((data) => Object.keys(data).length > 0, {
-  message: 'At least one field must be provided',
-});
+export const adminUpdateBookingSchema = z
+  .object({
+    startsAt: z.string().datetime().optional(), // ISO
+    durationMin: z.number().int().min(5).max(480).optional(),
+    barberId: objectId.optional(),
+    serviceName: z.string().min(2).max(100).optional(),
+    notes: z.string().max(500).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided',
+  });

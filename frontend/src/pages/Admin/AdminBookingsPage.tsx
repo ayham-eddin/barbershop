@@ -36,7 +36,7 @@ interface Barber {
   name: string;
 }
 
-/** Extract human-friendly error message from Axios or generic errors */
+/** Human-friendly error message */
 function errorMessage(err: unknown): string {
   if (typeof err === "string") return err;
   if (err && typeof err === "object") {
@@ -526,10 +526,8 @@ function StatusBadge({ status }: { status: string }) {
     cancelled: "bg-rose-100 text-rose-800 border-rose-200",
     completed: "bg-green-100 text-green-800 border-green-200",
   };
-
   const color =
     colors[status] || "bg-neutral-100 text-neutral-700 border-neutral-200";
-
   return (
     <span
       className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${color}`}
