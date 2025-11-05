@@ -21,6 +21,7 @@ interface AdminBooking {
   status: "booked" | "cancelled" | "completed" | string;
   user?: { id: string; name?: string; email?: string };
   barber?: { id: string; name?: string };
+  notes?: string; // ← NEW: include notes from backend
 }
 
 interface AdminResponse {
@@ -196,7 +197,7 @@ export default function AdminBookingsPage() {
       d.getDate()
     )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     setEditStartsAtLocal(local);
-    setEditNotes("");
+    setEditNotes(b.notes ?? ""); // ← NEW: prefill notes in edit modal
     setEditOpen(true);
   }
 
@@ -335,10 +336,26 @@ export default function AdminBookingsPage() {
                     <td className="px-4 py-3 text-neutral-800">
                       {fmtDate(b.startsAt)}
                     </td>
-                    <td className="px-4 py-3">{b.serviceName}</td>
+
+                    {/* Service + Notes */}
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col">
+                        <span>{b.serviceName}</span>
+                        {b.notes && (
+                          <span
+                            title={b.notes}
+                            className="text-xs text-neutral-500 truncate max-w-[180px]"
+                          >
+                            📝 {b.notes}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
                     <td className="px-4 py-3 font-medium">
                       {b.barber?.name ?? "—"}
                     </td>
+
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
                         <span className="font-medium">
@@ -349,9 +366,11 @@ export default function AdminBookingsPage() {
                         </span>
                       </div>
                     </td>
+
                     <td className="px-4 py-3">
                       <StatusBadge status={b.status} />
                     </td>
+
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <button

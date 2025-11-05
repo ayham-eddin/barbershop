@@ -46,10 +46,44 @@ export async function myBookings(
   }
 
   const uid = new Types.ObjectId(userId);
-  const bookings = await Appointment.find({ userId: uid })
+
+  // 1) Load user's bookings
+  const bookingsRaw = await Appointment.find({ userId: uid })
     .sort({ startsAt: 1 })
     .lean<AppointmentDoc[]>()
     .exec();
+
+  // 2) Collect barber ids as strings (safe)
+  const barberIdStrings = Array.from(
+    new Set(bookingsRaw.map((b) => toIdString(b.barberId))),
+  ).filter(isValidObjectIdMaybeString);
+
+  // 3) Query barbers and build a map of id -> { id, name }
+  interface BarberLean {
+    _id: unknown; // lean() can produce FlattenMaps<unknown>; we normalize via toIdString
+    name?: string;
+  }
+
+  let barbers: BarberLean[] = [];
+  if (barberIdStrings.length) {
+    barbers = await Barber.find({ _id: { $in: barberIdStrings } })
+      .select({ name: 1 })
+      .lean()
+      .exec();
+  }
+
+  const barberMap = new Map<string, { id: string; name?: string }>();
+  barbers.forEach((b) => {
+    const id = toIdString(b._id);
+    barberMap.set(id, { id, name: b.name });
+  });
+
+  // 4) Enrich bookings with barber object
+  const bookings = bookingsRaw.map((b) => {
+    const bid = toIdString(b.barberId);
+    const barber = barberMap.get(bid) ?? { id: bid };
+    return { ...b, barber };
+  });
 
   res.json({ bookings });
 }

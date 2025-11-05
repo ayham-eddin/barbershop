@@ -1,4 +1,3 @@
-// src/pages/DashboardPage.tsx
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMyBookings, cancelBooking, type Booking } from '../api/bookings';
 import toast from 'react-hot-toast';
@@ -34,9 +33,7 @@ export default function DashboardPage() {
       }
       return { prev };
     },
-    onSuccess: () => {
-      toast.success('Booking cancelled.');
-    },
+    onSuccess: () => toast.success('Booking cancelled.'),
     onError: (_err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(['me', 'bookings'], ctx.prev);
       toast.error('Could not cancel booking.');
@@ -137,6 +134,13 @@ function BookingCard({
       <p className="text-sm text-neutral-700">
         {dtFmt.format(new Date(booking.startsAt))}
       </p>
+
+      {/* NEW: Notes */}
+      {booking.notes && (
+        <p className="text-sm text-neutral-600 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2">
+          <span className="font-medium text-neutral-700">Note:</span> {booking.notes}
+        </p>
+      )}
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-neutral-500">Barber: {booking.barberId}</p>
