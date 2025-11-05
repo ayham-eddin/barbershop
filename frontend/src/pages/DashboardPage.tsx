@@ -1,6 +1,7 @@
 // src/pages/DashboardPage.tsx
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMyBookings, cancelBooking, type Booking } from '../api/bookings';
+import toast from 'react-hot-toast';
 
 const dtFmt = new Intl.DateTimeFormat('de-DE', {
   dateStyle: 'medium',
@@ -22,7 +23,6 @@ export default function DashboardPage() {
 
   const cancelMut = useMutation({
     mutationFn: (id: string) => cancelBooking(id),
-    // Optimistic update
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: ['me', 'bookings'] });
       const prev = qc.getQueryData<Booking[]>(['me', 'bookings']);
@@ -34,8 +34,12 @@ export default function DashboardPage() {
       }
       return { prev };
     },
+    onSuccess: () => {
+      toast.success('Booking cancelled.');
+    },
     onError: (_err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(['me', 'bookings'], ctx.prev);
+      toast.error('Could not cancel booking.');
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['me', 'bookings'] });

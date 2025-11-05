@@ -44,6 +44,9 @@ export default function BookingPage() {
   const [date, setDate] = useState(todayYMD());
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
+  // NEW: optional notes
+  const [notes, setNotes] = useState<string>('');
+
   // Derived service info
   const chosenService = useMemo(
     () => services.find((s) => s._id === serviceId) || null,
@@ -101,6 +104,7 @@ export default function BookingPage() {
         serviceName,
         durationMin,
         startsAt: selectedSlot,
+        notes: notes.trim() ? notes.trim() : undefined, // ← send only if present
       });
       setFeedback({
         kind: 'ok',
@@ -108,6 +112,7 @@ export default function BookingPage() {
       });
       setSlots((prev) => prev.filter((s) => s.start !== selectedSlot));
       setSelectedSlot(null);
+      setNotes('');
 
       // ✅ Redirect after short delay
       setTimeout(() => navigate('/dashboard', { replace: true }), 2500);
@@ -173,6 +178,22 @@ export default function BookingPage() {
                 className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
             </div>
+          </div>
+
+          {/* NEW: Notes */}
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              Notes (optional)
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder="Any preference or note for the barber…"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+            <div className="mt-1 text-xs text-neutral-500">{notes.length}/500</div>
           </div>
 
           {/* Actions */}
@@ -254,6 +275,13 @@ export default function BookingPage() {
             <dd className="font-medium text-neutral-900">{selectedSlot ? fmtTime(selectedSlot) : '—'}</dd></div>
           <div className="flex justify-between"><dt className="text-neutral-600">Price</dt>
             <dd className="font-medium text-neutral-900">€{chosenService?.price ?? 0}</dd></div>
+          {notes.trim() && (
+            <div className="flex justify-between"><dt className="text-neutral-600">Notes</dt>
+              <dd className="font-medium text-neutral-900 max-w-[180px] text-right truncate" title={notes}>
+                {notes}
+              </dd>
+            </div>
+          )}
         </dl>
 
         <button

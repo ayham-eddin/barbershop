@@ -10,6 +10,7 @@ export type Booking = {
   startsAt: string; // ISO
   endsAt: string;   // ISO
   status: 'booked' | 'cancelled' | 'completed';
+  notes?: string;   // ← optional notes from backend
 };
 
 export async function getAvailability(params: {
@@ -29,6 +30,7 @@ export async function createBooking(payload: {
   serviceName: string;
   durationMin: number;
   startsAt: string; // ISO
+  notes?: string;   // ← optional
 }) {
   const { data } = await api.post<{ booking: Booking }>('/api/bookings', payload);
   return data.booking;
