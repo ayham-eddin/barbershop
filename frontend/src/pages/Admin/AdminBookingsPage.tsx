@@ -9,8 +9,7 @@ import api from "../../api/client";
 import Modal from "../../components/Modal";
 import { patchAdminBooking } from "../../api/adminBookings";
 import TimeField from "../../components/TimeField";
-import toast from "react-hot-toast";
-import type { AxiosError } from "axios";
+import { notify } from "../../lib/notify";
 
 interface AdminBooking {
   _id: string;
@@ -21,7 +20,7 @@ interface AdminBooking {
   status: "booked" | "cancelled" | "completed" | string;
   user?: { id: string; name?: string; email?: string };
   barber?: { id: string; name?: string };
-  notes?: string; // ← NEW: include notes from backend
+  notes?: string;
 }
 
 interface AdminResponse {
@@ -35,21 +34,6 @@ interface AdminResponse {
 interface Barber {
   _id: string;
   name: string;
-}
-
-/** Human-friendly error message */
-function errorMessage(err: unknown): string {
-  if (typeof err === "string") return err;
-  if (err && typeof err === "object") {
-    const ax = err as AxiosError<{ error?: string; message?: string }>;
-    return (
-      ax.response?.data?.error ||
-      ax.response?.data?.message ||
-      ax.message ||
-      "Request failed"
-    );
-  }
-  return "Request failed";
 }
 
 export default function AdminBookingsPage() {
@@ -134,11 +118,11 @@ export default function AdminBookingsPage() {
       return { prev };
     },
     onSuccess: () => {
-      toast.success("Booking cancelled.");
+      notify.success("Booking cancelled.");
     },
     onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
-      toast.error(errorMessage(err));
+      notify.apiError(err, "Failed to cancel booking.");
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: qKey });
@@ -165,11 +149,11 @@ export default function AdminBookingsPage() {
       return { prev };
     },
     onSuccess: () => {
-      toast.success("Booking marked as completed.");
+      notify.success("Booking marked as completed.");
     },
     onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
-      toast.error(errorMessage(err));
+      notify.apiError(err, "Failed to mark as completed.");
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: qKey });
@@ -197,7 +181,7 @@ export default function AdminBookingsPage() {
       d.getDate()
     )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     setEditStartsAtLocal(local);
-    setEditNotes(b.notes ?? ""); // ← NEW: prefill notes in edit modal
+    setEditNotes(b.notes ?? "");
     setEditOpen(true);
   }
 
@@ -219,7 +203,7 @@ export default function AdminBookingsPage() {
       return patchAdminBooking(editId, patch);
     },
     onSuccess: () => {
-      toast.success("Booking updated.");
+      notify.success("Booking updated.");
       setEditOpen(false);
       setEditId(null);
       (async () => {
@@ -227,7 +211,7 @@ export default function AdminBookingsPage() {
       })().catch(() => {});
     },
     onError: (err) => {
-      toast.error(errorMessage(err));
+      notify.apiError(err, "Failed to update booking.");
     },
   });
 

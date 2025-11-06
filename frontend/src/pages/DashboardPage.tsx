@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMyBookings, cancelBooking, type Booking } from '../api/bookings';
-import toast from 'react-hot-toast';
 import Spinner from '../components/Spinner';
+import { notify } from '../lib/notify';
 
 const dtFmt = new Intl.DateTimeFormat('de-DE', {
   dateStyle: 'medium',
@@ -19,7 +19,6 @@ export default function DashboardPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['me', 'bookings'],
     queryFn: getMyBookings,
-    
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
@@ -38,10 +37,10 @@ export default function DashboardPage() {
       }
       return { prev };
     },
-    onSuccess: () => toast.success('Booking cancelled.'),
-    onError: (_err, _id, ctx) => {
+    onSuccess: () => notify.success('Booking cancelled.'),
+    onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(['me', 'bookings'], ctx.prev);
-      toast.error('Could not cancel booking.');
+      notify.apiError(err, 'Could not cancel booking.');
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['me', 'bookings'] });

@@ -60,7 +60,7 @@ export async function myBookings(
 
   // 3) Query barbers and build a map of id -> { id, name }
   interface BarberLean {
-    _id: unknown; // lean() can produce FlattenMaps<unknown>; we normalize via toIdString
+    _id: unknown; // accept unknown from lean(); normalize with toIdString
     name?: string;
   }
 
@@ -68,7 +68,7 @@ export async function myBookings(
   if (barberIdStrings.length) {
     barbers = await Barber.find({ _id: { $in: barberIdStrings } })
       .select({ name: 1 })
-      .lean()
+      .lean<{ _id: unknown; name?: string }[]>()
       .exec();
   }
 
@@ -286,7 +286,7 @@ export async function adminAllBookings(
     userIdStrings.length
       ? User.find({ _id: { $in: userIdStrings } })
         .select({ name: 1, email: 1 })
-        .lean()
+        .lean<{ _id: Types.ObjectId; name?: string; email?: string }[]>()
         .exec()
       : Promise.resolve(
           [] as { _id: Types.ObjectId; name?: string; email?: string }[],
@@ -294,15 +294,12 @@ export async function adminAllBookings(
     barberIdStrings.length
       ? Barber.find({ _id: { $in: barberIdStrings } })
         .select({ name: 1 })
-        .lean()
+        .lean<{ _id: Types.ObjectId; name?: string }[]>()
         .exec()
       : Promise.resolve([] as { _id: Types.ObjectId; name?: string }[]),
   ]);
 
-  const userMap = new Map<
-    string,
-    { id: string; name?: string; email?: string }
-  >();
+  const userMap = new Map<string, { id: string; name?: string; email?: string }>();
   users.forEach((u) => {
     const id = toIdString(u._id);
     userMap.set(id, { id, name: u.name, email: u.email });
@@ -346,9 +343,7 @@ export async function adminCancelBooking(
     .exec();
 
   if (!updated) {
-    res
-      .status(404)
-      .json({ error: 'Booking not found or not cancellable' });
+    res.status(404).json({ error: 'Booking not found or not cancellable' });
   } else {
     res.json({ booking: updated });
   }
@@ -374,9 +369,7 @@ export async function adminCompleteBooking(
     .exec();
 
   if (!updated) {
-    res
-      .status(404)
-      .json({ error: 'Booking not found or not completable' });
+    res.status(404).json({ error: 'Booking not found or not completable' });
   } else {
     res.json({ booking: updated });
   }
