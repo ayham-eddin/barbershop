@@ -9,7 +9,8 @@ import api from "../../api/client";
 import Modal from "../../components/Modal";
 import { patchAdminBooking } from "../../api/adminBookings";
 import TimeField from "../../components/TimeField";
-import { notify } from "../../lib/notify";
+import toast from "react-hot-toast";
+import { errorMessage } from "../../lib/errors";
 
 interface AdminBooking {
   _id: string;
@@ -118,11 +119,11 @@ export default function AdminBookingsPage() {
       return { prev };
     },
     onSuccess: () => {
-      notify.success("Booking cancelled.");
+      toast.success("Booking cancelled.");
     },
     onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
-      notify.apiError(err, "Failed to cancel booking.");
+      toast.error(errorMessage(err));
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: qKey });
@@ -149,11 +150,11 @@ export default function AdminBookingsPage() {
       return { prev };
     },
     onSuccess: () => {
-      notify.success("Booking marked as completed.");
+      toast.success("Booking marked as completed.");
     },
     onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
-      notify.apiError(err, "Failed to mark as completed.");
+      toast.error(errorMessage(err));
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: qKey });
@@ -203,7 +204,7 @@ export default function AdminBookingsPage() {
       return patchAdminBooking(editId, patch);
     },
     onSuccess: () => {
-      notify.success("Booking updated.");
+      toast.success("Booking updated.");
       setEditOpen(false);
       setEditId(null);
       (async () => {
@@ -211,7 +212,7 @@ export default function AdminBookingsPage() {
       })().catch(() => {});
     },
     onError: (err) => {
-      notify.apiError(err, "Failed to update booking.");
+      toast.error(errorMessage(err));
     },
   });
 

@@ -1,11 +1,9 @@
 // src/api/client.ts
-import axios, { type AxiosError } from 'axios';
-
-type ApiErrorData = { error?: string; message?: string };
+import axios, { AxiosError } from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000',
-  withCredentials: false, // switch to true if you later move to HttpOnly cookies
+  withCredentials: false,
 });
 
 // Attach token from localStorage on every request
@@ -15,18 +13,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Light error normalizer (no auto-toasting)
+// Normalize errors from one place
 api.interceptors.response.use(
   (res) => res,
-  (error: AxiosError<ApiErrorData>) => {
-    const msg = error.response?.data?.error || error.response?.data?.message;
-    if (msg) {
-      // mutate the error message so callers get a clean one
-      // (safe, keeps typings; no `any`)
-      Object.assign(error, { message: msg });
+  (err: AxiosError<{ error?: string; message?: string }>) => {
+    // No response => server unreachable / CORS / network down
+    if (!err.response) {
+      return Promise.reject(new Error('Server unavailable. Please try again later.'));
     }
-    return Promise.reject(error);
-  },
+    // Prefer backend {error} or {message}
+    const msg =
+      err.response.data?.error ||
+      err.response.data?.message ||
+      err.message ||
+      'Request failed';
+    return Promise.reject(new Error(msg));
+  }
 );
 
 export default api;
