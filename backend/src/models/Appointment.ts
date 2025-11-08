@@ -1,6 +1,11 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
-export type ApptStatus = 'booked' | 'cancelled' | 'completed';
+export type ApptStatus =
+  | 'booked'
+  | 'cancelled'
+  | 'completed'
+  | 'no_show'
+  | 'rescheduled';
 
 export interface AppointmentDoc extends Document<Types.ObjectId> {
   userId: Types.ObjectId;
@@ -11,6 +16,11 @@ export interface AppointmentDoc extends Document<Types.ObjectId> {
   endsAt: Date;
   status: ApptStatus;
   notes?: string;
+
+  // audit/flow
+  original_created_at: Date; // first creation time
+  last_modified_at: Date;    // last reschedule time
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,19 +35,18 @@ const AppointmentSchema = new Schema<AppointmentDoc>(
     endsAt: { type: Date, required: true },
     status: {
       type: String,
-      enum: ['booked', 'cancelled', 'completed'],
+      enum: ['booked', 'cancelled', 'completed', 'no_show', 'rescheduled'],
       default: 'booked',
     },
     notes: { type: String },
+
+    original_created_at: { type: Date, required: true },
+    last_modified_at: { type: Date, required: true },
   },
   { timestamps: true },
 );
 
-AppointmentSchema.index(
-  { barberId: 1, startsAt: 1, endsAt: 1 },
-);
+// useful for overlap checks
+AppointmentSchema.index({ barberId: 1, startsAt: 1, endsAt: 1 });
 
-export const Appointment = model<AppointmentDoc>(
-  'Appointment',
-  AppointmentSchema,
-);
+export const Appointment = model<AppointmentDoc>('Appointment', AppointmentSchema);

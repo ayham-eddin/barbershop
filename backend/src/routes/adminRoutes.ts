@@ -13,6 +13,8 @@ import {
 
 import { User } from '@src/models/User';
 import { TimeOff } from '@src/models/TimeOff';
+import type { AuthRequest } from '@src/middleware/requireAuth';
+import { AuditLog } from '@src/models/AuditLog';
 
 const admin = Router();
 
@@ -111,6 +113,53 @@ admin.delete(
       return res.status(404).json({ error: 'Time-off not found' });
     }
     return res.json({ deleted });
+  },
+);
+
+// POST /api/admin/users/:id/unblock  (unblock a user)
+admin.post(
+  '/users/:id/unblock',
+  requireAuth,
+  requireAdmin,
+  validateParams(z.object({ id: objectId })),
+  async (req: AuthRequest, res: Response) => {
+    const { id } = req.params as { id: string };
+    const _id = new Types.ObjectId(id);
+
+    const user = await User.findById(_id).exec();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const before = {
+      is_online_booking_blocked: user.is_online_booking_blocked,
+      block_reason: user.block_reason,
+      warning_count: user.warning_count,
+    };
+
+    user.is_online_booking_blocked = false;
+    user.block_reason = undefined;
+    await user.save();
+
+    const actorSub = req.user?.sub ?? '';
+    const actorId = Types.ObjectId.isValid(actorSub)
+      ? new Types.ObjectId(actorSub)
+      : null;
+
+    await AuditLog.create({
+      actorId,
+      action: 'user.unblock',
+      entityType: 'user',
+      entityId: user._id,
+      before,
+      after: {
+        is_online_booking_blocked: user.is_online_booking_blocked,
+        block_reason: user.block_reason,
+        warning_count: user.warning_count,
+      },
+    });
+
+    return res.json({
+      user: { _id: user._id, is_online_booking_blocked: false },
+    });
   },
 );
 

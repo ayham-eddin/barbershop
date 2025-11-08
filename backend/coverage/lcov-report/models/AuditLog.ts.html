@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for models/Service.ts</title>
+    <title>Code coverage report for models/AuditLog.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">models</a> Service.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">models</a> AuditLog.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>4/4</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>4/4</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
@@ -86,17 +86,11 @@
 <a name='L21'></a><a href='#L21'>21</a>
 <a name='L22'></a><a href='#L22'>22</a>
 <a name='L23'></a><a href='#L23'>23</a>
-<a name='L24'></a><a href='#L24'>24</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">13x</span>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -108,30 +102,42 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">13x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Schema, model, type Document } from 'mongoose';
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Schema, model, Document, Types } from 'mongoose';
 &nbsp;
-export interface ServiceDoc extends Document {
-  name: string;
-  durationMin: number;
-  price: number;
+export interface AuditLogDoc extends Document&lt;Types.ObjectId&gt; {
+  actorId: Types.ObjectId | null; // null for system
+  action: string; // e.g. "booking.create", "booking.reschedule", "booking.no_show", "user.unblock"
+  entityType: 'booking' | 'user';
+  entityId: Types.ObjectId;
+  before?: Record&lt;string, unknown&gt;;
+  after?: Record&lt;string, unknown&gt;;
   createdAt: Date;
-  updatedAt: Date;
 }
 &nbsp;
-const ServiceSchema = new Schema&lt;ServiceDoc&gt;(
+const AuditLogSchema = new Schema&lt;AuditLogDoc&gt;(
   {
-    name: { type: String, required: true, trim: true },
-    durationMin: { type: Number, required: true, min: 5 },
-    price: { type: Number, required: true, min: 0 },
+    actorId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    action: { type: String, required: true },
+    entityType: { type: String, enum: ['booking', 'user'], required: true },
+    entityId: { type: Schema.Types.ObjectId, required: true },
+    before: { type: Schema.Types.Mixed },
+    after: { type: Schema.Types.Mixed },
   },
-  { timestamps: true },
+  { timestamps: { createdAt: true, updatedAt: false } },
 );
 &nbsp;
-// 🔒 Enforce unique names at the DB level
-ServiceSchema.index({ name: 1 }, { unique: true });
-&nbsp;
-export const Service = model&lt;ServiceDoc&gt;('Service', ServiceSchema);
+export const AuditLog = model&lt;AuditLogDoc&gt;('AuditLog', AuditLogSchema);
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -139,7 +145,7 @@ export const Service = model&lt;ServiceDoc&gt;('Service', ServiceSchema);
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-11-08T14:02:47.867Z
+                at 2025-11-08T14:02:47.038Z
             </div>
         <script src="../prettify.js"></script>
         <script>

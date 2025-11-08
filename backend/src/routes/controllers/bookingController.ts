@@ -5,6 +5,8 @@ import { Appointment, type AppointmentDoc } from '@src/models/Appointment';
 import { Barber } from '@src/models/Barber';
 import { User } from '@src/models/User';
 import { hasOverlap } from '@src/services/scheduling';
+import { berlinNowWindow7dUtc } from '@src/common/time';
+import { AuditLog } from '@src/models/AuditLog';
 
 /** Helpers */
 function toIdString(id: unknown): string {
@@ -88,6 +90,43 @@ export async function myBookings(
   res.json({ bookings });
 }
 
+/** Internal: enforce weekly limit and blocking (new rules) */
+async function assertUserCanBookOrReschedule(userObjId: Types.ObjectId) {
+  const user = await User.findById(userObjId).lean().exec();
+  if (!user) {
+    return { ok: false, code: 401, msg: 'Unauthorized' } as const;
+  }
+  if (user.is_online_booking_blocked) {
+    return {
+      ok: false as const,
+      code: 403,
+      msg:
+        'Your online booking is restricted due to repeated no-shows.' + 
+        'Please contact the barbershop at +49 000 0000000 or visit in person.',
+    };
+  }
+
+  // Rolling 7-day window from "now" in Europe/Berlin
+  const { startUtc, endUtc } = berlinNowWindow7dUtc();
+
+  const active = await Appointment.exists({
+    userId: userObjId,
+    status: { $in: ['booked', 'rescheduled'] },
+    startsAt: { $gte: startUtc, $lt: endUtc },
+  }).exec();
+
+  if (active) {
+    return {
+      ok: false as const,
+      code: 409,
+      msg:
+        'You can only have one active booking within 7 days.' + 
+        'Please reschedule your existing booking.',
+    };
+  }
+  return { ok: true as const };
+}
+
 /** POST /api/bookings (auth required) */
 export async function createBooking(
   req: AuthRequest<CreateBookingBody>,
@@ -125,16 +164,25 @@ export async function createBooking(
     return;
   }
 
-  const ends = new Date(starts.getTime() + dur * 60_000);
-
-  const barberObjId = new Types.ObjectId(barberId);
   const userObjId = new Types.ObjectId(userId);
+
+  // weekly limit + blocking (Berlin window)
+  const gate = await assertUserCanBookOrReschedule(userObjId);
+  if (!gate.ok) {
+    res.status(gate.code).json({ error: gate.msg });
+    return;
+  }
+
+  const ends = new Date(starts.getTime() + dur * 60_000);
+  const barberObjId = new Types.ObjectId(barberId);
 
   // Reuse overlap helper
   if (await hasOverlap({ barberId: barberObjId, startsAt: starts, endsAt: ends })) {
     res.status(409).json({ error: 'Time slot not available' });
     return;
   }
+
+  const now = new Date();
 
   const appt = await Appointment.create({
     userId: userObjId,
@@ -145,6 +193,16 @@ export async function createBooking(
     endsAt: ends,
     notes,
     status: 'booked',
+    original_created_at: now,
+    last_modified_at: now,
+  });
+
+  await AuditLog.create({
+    actorId: userObjId,
+    action: 'booking.create',
+    entityType: 'booking',
+    entityId: appt._id,
+    after: { bookingId: appt._id, startsAt: appt.startsAt, endsAt: appt.endsAt },
   });
 
   res.status(201).json({ booking: appt });
@@ -171,9 +229,9 @@ export async function cancelBooking(
     {
       _id: new Types.ObjectId(bookingId),
       userId: new Types.ObjectId(userId),
-      status: 'booked',
+      status: { $in: ['booked', 'rescheduled'] },
     },
-    { $set: { status: 'cancelled' } },
+    { $set: { status: 'cancelled', last_modified_at: new Date() } },
     { new: true },
   )
     .lean<AppointmentDoc | null>()
@@ -206,7 +264,7 @@ export async function adminAllBookings(
 
   // status
   const status = (req.query.status as string | undefined)?.toLowerCase();
-  if (status && ['booked', 'cancelled', 'completed'].includes(status)) {
+  if (status && ['booked', 'cancelled', 'completed', 'no_show', 'rescheduled'].includes(status)) {
     filter.status = status;
   }
 
@@ -335,8 +393,8 @@ export async function adminCancelBooking(
   }
 
   const updated = await Appointment.findOneAndUpdate(
-    { _id: new Types.ObjectId(bookingId), status: 'booked' },
-    { $set: { status: 'cancelled' } },
+    { _id: new Types.ObjectId(bookingId), status: { $in: ['booked', 'rescheduled'] } },
+    { $set: { status: 'cancelled', last_modified_at: new Date() } },
     { new: true },
   )
     .lean<AppointmentDoc | null>()
@@ -361,8 +419,8 @@ export async function adminCompleteBooking(
   }
 
   const updated = await Appointment.findOneAndUpdate(
-    { _id: new Types.ObjectId(bookingId), status: 'booked' },
-    { $set: { status: 'completed' } },
+    { _id: new Types.ObjectId(bookingId), status: { $in: ['booked', 'rescheduled'] } },
+    { $set: { status: 'completed', last_modified_at: new Date() } },
     { new: true },
   )
     .lean<AppointmentDoc | null>()
@@ -464,7 +522,7 @@ export async function adminUpdateBooking(
 
   const updated = await Appointment.findByIdAndUpdate(
     _id,
-    { $set: updates },
+    { $set: { ...updates, last_modified_at: new Date() } },
     { new: true },
   ).lean<AppointmentDoc | null>().exec();
 
@@ -474,4 +532,164 @@ export async function adminUpdateBooking(
   }
 
   res.json({ booking: updated });
+}
+
+/** PATCH /api/bookings/:id  (auth required) – reschedule self booking */
+export async function rescheduleMyBooking(
+  req: AuthRequest<unknown, { id: string }>,
+  res: Response,
+): Promise<void> {
+  const userId = req.user?.sub;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  const { id } = req.params;
+  if (!Types.ObjectId.isValid(id)) {
+    res.status(400).json({ error: 'Invalid id' });
+    return;
+  }
+
+  const patch = req.body as Partial<{
+    startsAt: string;
+    durationMin: number;
+  }>;
+  if (typeof patch.startsAt !== 'string' && typeof patch.durationMin !== 'number') {
+    res.status(400).json({ error: 'startsAt or durationMin required' });
+    return;
+  }
+
+  const _id = new Types.ObjectId(id);
+  const userObjId = new Types.ObjectId(userId);
+  const existing = await Appointment.findOne({ _id, userId: userObjId }).exec();
+
+  if (!existing) {
+    res.status(404).json({ error: 'Booking not found' });
+    return;
+  }
+  if (existing.status !== 'booked' && existing.status !== 'rescheduled') {
+    res.status(409).json({ error: 'Only active bookings can be rescheduled' });
+    return;
+  }
+
+  // block check first
+  const blockedUser = await User.findById(userObjId).lean().exec();
+  if (!blockedUser) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  if (blockedUser.is_online_booking_blocked) {
+    res.status(403).json({
+      error:
+        'Your online booking is restricted due to repeated no-shows.' +
+        'Please contact the barbershop at +49 000 0000000 or visit in person.',
+    });
+    return;
+  }
+
+  // validate inputs
+  const startsAt = typeof patch.startsAt === 'string'
+    ? new Date(patch.startsAt)
+    : new Date(existing.startsAt);
+  if (Number.isNaN(startsAt.getTime())) {
+    res.status(400).json({ error: 'Invalid startsAt (ISO expected)' });
+    return;
+  }
+  const durationMin =
+    typeof patch.durationMin === 'number' ? patch.durationMin : existing.durationMin;
+  if (!Number.isFinite(durationMin) || durationMin <= 0 || durationMin > 480) {
+    res.status(400).json({ error: 'Invalid durationMin (1..480)' });
+    return;
+  }
+  const endsAt = new Date(startsAt.getTime() + durationMin * 60_000);
+
+  const overlap = await hasOverlap({
+    barberId: existing.barberId,
+    startsAt,
+    endsAt,
+    excludeId: existing._id,
+  });
+  if (overlap) {
+    res.status(409).json({ error: 'Time slot not available' });
+    return;
+  }
+
+  const before = {
+    startsAt: existing.startsAt,
+    endsAt: existing.endsAt,
+    status: existing.status,
+    last_modified_at: existing.last_modified_at,
+  };
+
+  existing.startsAt = startsAt;
+  existing.endsAt = endsAt;
+  existing.last_modified_at = new Date();
+  existing.status = 'rescheduled';
+  await existing.save();
+
+  await AuditLog.create({
+    actorId: userObjId,
+    action: 'booking.reschedule',
+    entityType: 'booking',
+    entityId: existing._id,
+    before,
+    after: {
+      startsAt: existing.startsAt,
+      endsAt: existing.endsAt,
+      status: existing.status,
+      last_modified_at: existing.last_modified_at,
+    },
+  });
+
+  res.json({ booking: existing });
+}
+
+/** POST /api/bookings/admin/:id/no-show  (admin only) */
+export async function adminMarkNoShow(
+  req: AuthRequest<unknown, { id: string }>,
+  res: Response,
+): Promise<void> {
+  const { id } = req.params;
+  if (!Types.ObjectId.isValid(id)) {
+    res.status(400).json({ error: 'Invalid id' });
+    return;
+  }
+  const booking = await Appointment.findById(new Types.ObjectId(id)).exec();
+  if (!booking) {
+    res.status(404).json({ error: 'Booking not found' });
+    return;
+  }
+
+  if (booking.status === 'cancelled' || booking.status === 'completed') {
+    res.status(409).json({ error: 'Only active bookings can be marked no-show' });
+    return;
+  }
+
+  const before = { status: booking.status };
+  booking.status = 'no_show';
+  booking.last_modified_at = new Date();
+  await booking.save();
+
+  // increment warning; block at 2
+  const user = await User.findById(booking.userId).exec();
+  if (user) {
+    user.warning_count = (user.warning_count ?? 0) + 1;
+    user.last_warning_at = new Date();
+    if (user.warning_count >= 2) {
+      user.is_online_booking_blocked = true;
+      user.block_reason = 'Two no-shows';
+    }
+    await user.save();
+
+    await AuditLog.create({
+      actorId: new Types.ObjectId(req.user!.sub),
+      action: 'booking.no_show',
+      entityType: 'booking',
+      entityId: booking._id,
+      before,
+      after: { status: 'no_show', warning_count: user.warning_count },
+    });
+  }
+
+  res.json({ booking });
 }

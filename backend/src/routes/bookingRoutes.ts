@@ -9,6 +9,8 @@ import {
   adminCancelBooking,
   adminCompleteBooking,
   adminUpdateBooking,
+  rescheduleMyBooking,
+  adminMarkNoShow,
 } from './controllers/bookingController';
 import { getAvailableSlots } from '@src/services/scheduling';
 import { validateBody, validateParams } from '@src/middleware/validate';
@@ -17,6 +19,7 @@ import {
   cancelBookingSchema,
   adminUpdateBookingSchema,
 } from './validators/bookingSchemas';
+import { adminBookingIdParams } from './validators/bookingAdminSchemas';
 
 const router = Router();
 
@@ -30,8 +33,17 @@ router.post(
   cancelBooking,
 );
 
+// Reschedule own booking (startsAt and/or durationMin)
+router.patch(
+  '/:id',
+  requireAuth,
+  validateParams(cancelBookingSchema), // validates :id
+  rescheduleMyBooking,
+);
+
 /** 🧑‍💼 Admin view + actions */
 router.get('/admin/all', requireAuth, requireAdmin, adminAllBookings);
+
 router.post(
   '/admin/:id/cancel',
   requireAuth,
@@ -39,6 +51,7 @@ router.post(
   validateParams(cancelBookingSchema),
   adminCancelBooking,
 );
+
 router.post(
   '/admin/:id/complete',
   requireAuth,
@@ -46,6 +59,7 @@ router.post(
   validateParams(cancelBookingSchema),
   adminCompleteBooking,
 );
+
 router.patch(
   '/admin/:id',
   requireAuth,
@@ -53,6 +67,15 @@ router.patch(
   validateParams(cancelBookingSchema), // validates :id
   validateBody(adminUpdateBookingSchema),
   adminUpdateBooking,
+);
+
+// Mark no-show
+router.post(
+  '/admin/:id/no-show',
+  requireAuth,
+  requireAdmin,
+  validateParams(adminBookingIdParams),
+  adminMarkNoShow,
 );
 
 /** 📅 Public availability check (no auth required) */
