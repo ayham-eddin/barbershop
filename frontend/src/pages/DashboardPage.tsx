@@ -2,12 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMyBookings, cancelBooking, type Booking } from '../api/bookings';
 import Spinner from '../components/Spinner';
 import { notify } from '../lib/notify';
+import { formatBerlin } from '../utils/datetime';
 
-const dtFmt = new Intl.DateTimeFormat('de-DE', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-  timeZone: 'Europe/Berlin',
-});
 
 function isPast(iso: string) {
   return new Date(iso).getTime() < Date.now();
@@ -137,9 +133,7 @@ function BookingCard({
         <StatusBadge status={booking.status} />
       </div>
 
-      <p className="text-sm text-neutral-700">
-        {dtFmt.format(new Date(booking.startsAt))}
-      </p>
+      <p className="text-sm text-neutral-700">{formatBerlin(booking.startsAt)}</p>
 
       {booking.notes && (
         <p className="text-sm text-neutral-600 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2">

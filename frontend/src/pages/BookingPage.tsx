@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getAvailability, createBooking } from '../api/bookings';
 import api from '../api/client';
 import { getServices, type Service } from '../api/public';
+import { formatBerlinTime } from '../utils/datetime';
 
 type Barber = { _id: string; name: string };
 
@@ -15,13 +16,7 @@ function todayYMD(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('de-DE', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Europe/Berlin',
-  });
-}
+const fmtTime = (iso: string) => formatBerlinTime(iso);
 
 export default function BookingPage() {
   const navigate = useNavigate();

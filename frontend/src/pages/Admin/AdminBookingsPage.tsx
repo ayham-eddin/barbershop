@@ -11,6 +11,7 @@ import { patchAdminBooking } from "../../api/adminBookings";
 import TimeField from "../../components/TimeField";
 import toast from "react-hot-toast";
 import { errorMessage } from "../../lib/errors";
+import { formatBerlin, localInputToUtcIso, isoToLocalInput } from '../../utils/datetime';
 
 interface AdminBooking {
   _id: string;
@@ -83,11 +84,7 @@ export default function AdminBookingsPage() {
       staleTime: 5_000,
     });
 
-  const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleString("de-DE", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+  const fmtDate = (iso: string) => formatBerlin(iso);
 
   const bookings: AdminBooking[] = data?.bookings ?? [];
   const curPage = data?.page ?? page;
@@ -175,13 +172,7 @@ export default function AdminBookingsPage() {
     setEditBarberId(b.barber?.id ?? "");
     setEditServiceName(b.serviceName);
     setEditDurationMin(b.durationMin);
-    // convert ISO -> local input value
-    const d = new Date(b.startsAt);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
-      d.getDate()
-    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    setEditStartsAtLocal(local);
+    setEditStartsAtLocal(isoToLocalInput(b.startsAt));
     setEditNotes(b.notes ?? "");
     setEditOpen(true);
   }
@@ -189,9 +180,8 @@ export default function AdminBookingsPage() {
   const patchMutation = useMutation({
     mutationFn: async () => {
       if (!editId) return null;
-      // convert local -> ISO
       const startsAt = editStartsAtLocal
-        ? new Date(editStartsAtLocal).toISOString()
+        ? localInputToUtcIso(editStartsAtLocal)
         : undefined;
 
       const patch: Record<string, unknown> = {};
