@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminBookingsPage from './pages/Admin/AdminBookingsPage';
+import AdminUsersPage from './pages/Admin/AdminUsersPage';
 import BookingPage from './pages/BookingPage';
 import AdminServicesPage from './pages/Admin/AdminServicesPage'; // ⬅️ add this
 import { useState, useEffect } from 'react';
@@ -55,8 +56,11 @@ export default function App() {
               path="/admin/bookings"
               element={token && role === 'admin' ? <AdminBookingsPage /> : <Navigate to="/login" />}
             />
+            <Route 
+              path="/admin/users" 
+              element={token && role === 'admin' ? <AdminUsersPage /> : <Navigate to="/login" />} />
             <Route
-              path="/admin/services"   // ⬅️ new route
+              path="/admin/services" 
               element={token && role === 'admin' ? <AdminServicesPage /> : <Navigate to="/login" />}
             />
             <Route path="*" element={<Navigate to="/" />} />

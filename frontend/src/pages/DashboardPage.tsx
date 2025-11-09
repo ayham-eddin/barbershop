@@ -1,12 +1,24 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyBookings, cancelBooking, type Booking } from '../api/bookings';
+import {
+  getMyBookings,
+  cancelBooking,
+  rescheduleMyBooking,
+  type Booking,
+  type BookingStatus,
+} from '../api/bookings';
 import Spinner from '../components/Spinner';
 import { notify } from '../lib/notify';
 import { formatBerlin } from '../utils/datetime';
-
+import Modal from '../components/Modal';
+import TimeField from '../components/TimeField';
 
 function isPast(iso: string) {
   return new Date(iso).getTime() < Date.now();
+}
+
+function isActive(status: BookingStatus) {
+  return status === 'booked' || status === 'rescheduled';
 }
 
 export default function DashboardPage() {
@@ -20,6 +32,7 @@ export default function DashboardPage() {
     refetchOnWindowFocus: false,
   });
 
+  // Cancel
   const cancelMut = useMutation({
     mutationFn: (id: string) => cancelBooking(id),
     onMutate: async (id) => {
@@ -40,6 +53,48 @@ export default function DashboardPage() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['me', 'bookings'] });
+    },
+  });
+
+  // Reschedule modal state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editStartsAtLocal, setEditStartsAtLocal] = useState<string>(''); // yyyy-MM-ddTHH:mm
+  const [editDurationMin, setEditDurationMin] = useState<number>(30);
+
+  function openReschedule(b: Booking) {
+    setEditId(b._id);
+    // prefill from current values
+    const d = new Date(b.startsAt);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+      d.getHours(),
+    )}:${pad(d.getMinutes())}`;
+    setEditStartsAtLocal(local);
+    setEditDurationMin(b.durationMin);
+    setEditOpen(true);
+  }
+
+  const rescheduleMut = useMutation({
+    mutationFn: async () => {
+      if (!editId) return null;
+      const startsAt =
+        editStartsAtLocal ? new Date(editStartsAtLocal).toISOString() : undefined;
+      const patch: Partial<{ startsAt: string; durationMin: number }> = {};
+      if (startsAt) patch.startsAt = startsAt;
+      if (Number.isFinite(editDurationMin)) patch.durationMin = editDurationMin;
+      return rescheduleMyBooking(editId, patch);
+    },
+    onSuccess: () => {
+      notify.success('Booking rescheduled.');
+      setEditOpen(false);
+      setEditId(null);
+      (async () => {
+        await qc.invalidateQueries({ queryKey: ['me', 'bookings'] });
+      })().catch(() => {});
+    },
+    onError: (err) => {
+      notify.apiError(err, 'Could not reschedule this booking.');
     },
   });
 
@@ -88,23 +143,76 @@ export default function DashboardPage() {
                 key={b._id}
                 booking={b}
                 onCancel={() => cancelMut.mutate(b._id)}
+                onReschedule={() => openReschedule(b)}
                 cancelling={cancelMut.isPending && cancelMut.variables === b._id}
+                canReschedule={isActive(b.status) && !isPast(b.startsAt)}
               />
             ))}
         </div>
       )}
+
+      {/* Reschedule Modal */}
+      <Modal open={editOpen} title="Reschedule booking" onClose={() => setEditOpen(false)}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            rescheduleMut.mutate();
+          }}
+          className="space-y-3"
+        >
+          <TimeField
+            value={editStartsAtLocal}
+            onChange={(isoLocal) => setEditStartsAtLocal(isoLocal)}
+            label="Starts at"
+            required
+          />
+
+          <label className="block text-sm font-medium text-neutral-700">
+            Duration (min)
+            <input
+              type="number"
+              min={5}
+              max={480}
+              value={editDurationMin}
+              onChange={(e) => setEditDurationMin(Number(e.target.value))}
+              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+              required
+            />
+          </label>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setEditOpen(false)}
+              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={rescheduleMut.isPending}
+              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
+            >
+              {rescheduleMut.isPending ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </section>
   );
 }
 
 function StatusBadge({ status }: { status: Booking['status'] }) {
-  const styles =
-    status === 'booked'
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-      : 'bg-neutral-100 text-neutral-700 border-neutral-200';
+  const map: Record<BookingStatus, string> = {
+    booked: 'bg-amber-100 text-amber-800 border-amber-200',
+    rescheduled: 'bg-sky-100 text-sky-800 border-sky-200',
+    completed: 'bg-green-100 text-green-800 border-green-200',
+    cancelled: 'bg-neutral-100 text-neutral-700 border-neutral-200',
+    no_show: 'bg-rose-100 text-rose-800 border-rose-200',
+  };
   return (
-    <span className={`text-xs font-medium px-2 py-1 rounded-full border ${styles}`}>
-      {status}
+    <span className={`text-xs font-medium px-2 py-1 rounded-full border ${map[status]}`}>
+      {status.replace('_', ' ')}
     </span>
   );
 }
@@ -112,14 +220,18 @@ function StatusBadge({ status }: { status: Booking['status'] }) {
 function BookingCard({
   booking,
   onCancel,
+  onReschedule,
   cancelling,
+  canReschedule,
 }: {
   booking: Booking;
   onCancel: () => void;
+  onReschedule: () => void;
   cancelling: boolean;
+  canReschedule: boolean;
 }) {
   const past = isPast(booking.startsAt);
-  const canCancel = booking.status === 'booked' && !past;
+  const canCancel = (booking.status === 'booked' || booking.status === 'rescheduled') && !past;
 
   const barberLabel = booking.barber?.name ?? booking.barber?.id ?? booking.barberId;
 
@@ -144,6 +256,15 @@ function BookingCard({
       <div className="flex items-center justify-between">
         <p className="text-xs text-neutral-500">Barber: {barberLabel}</p>
         <div className="flex items-center gap-2">
+          {canReschedule && (
+            <button
+              onClick={onReschedule}
+              className="text-sm border border-neutral-300 rounded-lg px-3 py-1.5 hover:bg-neutral-100 transition"
+              title="Reschedule this booking"
+            >
+              Reschedule
+            </button>
+          )}
           <a
             href="/book"
             className="text-sm text-neutral-700 hover:text-neutral-900 underline underline-offset-4"

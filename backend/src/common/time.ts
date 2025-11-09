@@ -1,22 +1,35 @@
+// src/common/time.ts
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
+import tz from 'dayjs/plugin/timezone';
 
 dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.tz.setDefault('Europe/Berlin');
+dayjs.extend(tz);
 
-export function nowBerlin() {
-  return dayjs.tz();
+const EUROPE_BERLIN = 'Europe/Berlin';
+
+export interface Window7dUtc {
+  startUtc: Date;
+  endUtc: Date;
 }
 
-export function berlinAddDays(baseISO: string | Date, days: number) {
-  return dayjs.tz(baseISO).add(days, 'day');
+/**
+ * Rolling 7-day window starting "now" in Europe/Berlin, returned as UTC Dates.
+ * This matches the product rule: “one active booking within the next 7 days from now”.
+ */
+export function berlinNowWindow7dUtc(): Window7dUtc {
+  const nowBerlin = dayjs().tz(EUROPE_BERLIN);
+  const endBerlin = nowBerlin.add(7, 'day');
+
+  return {
+    startUtc: nowBerlin.toDate(),       // same instant, UTC date
+    endUtc: endBerlin.toDate(),         // same instant, +7d, UTC date
+  };
 }
 
-// Return [startUTC, endUTC) for a rolling 7-day window starting “now in Berlin”
-export function berlinNowWindow7dUtc(): { startUtc: Date; endUtc: Date } {
-  const start = nowBerlin();
-  const end = start.add(7, 'day');
-  return { startUtc: start.toDate(), endUtc: end.toDate() };
+export function toBerlin(isoOrDate: string | Date): string {
+  return dayjs(isoOrDate).tz(EUROPE_BERLIN).format();
+}
+export function nowBerlinISO(): string {
+  return dayjs().tz(EUROPE_BERLIN).format();
 }

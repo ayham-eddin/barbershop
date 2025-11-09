@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAvailability, createBooking } from '../api/bookings';
+import {
+  getAvailability,
+  createBooking,
+  getMyBookings,
+  type Booking,
+  isBlockedError,
+  isWeeklyLimitError,
+} from '../api/bookings';
 import api from '../api/client';
 import { getServices, type Service } from '../api/public';
 import { formatBerlinTime } from '../utils/datetime';
@@ -17,6 +24,13 @@ function todayYMD(): string {
 }
 
 const fmtTime = (iso: string) => formatBerlinTime(iso);
+
+function within7DaysBerlin(iso: string): boolean {
+  const now = new Date();
+  const t = new Date(iso);
+  const diffMs = t.getTime() - now.getTime();
+  return diffMs >= 0 && diffMs <= 7 * 24 * 60 * 60 * 1000;
+}
 
 export default function BookingPage() {
   const navigate = useNavigate();
@@ -53,21 +67,34 @@ export default function BookingPage() {
   // Availability & booking state
   const [slots, setSlots] = useState<{ start: string; end: string }[]>([]);
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<
+    | { kind: 'ok'; text: string }
+    | { kind: 'err'; text: string; reason?: 'blocked' | 'weekly' }
+    | null
+  >(null);
 
-  // Load barbers + services
+  // Check if the user already has an active booking within 7 days
+  const [myActiveWithin7d, setMyActiveWithin7d] = useState<Booking | null>(null);
+
+  // Load barbers + services + my bookings (for UX gating)
   useEffect(() => {
     (async () => {
-      const [{ data: b }, svc] = await Promise.all([
+      const [{ data: b }, svc, mine] = await Promise.all([
         api.get<{ barbers: Barber[] }>('/api/barbers'),
         getServices(),
+        getMyBookings().catch(() => [] as Booking[]), // ignore errors here
       ]);
       setBarbers(b.barbers);
       setServices(svc);
       if (b.barbers[0]?._id) setBarberId(b.barbers[0]._id);
       if (svc[0]?._id) setServiceId(svc[0]._id);
+
+      const active = (mine as Booking[]).find(
+        (bk) => (bk.status === 'booked' || bk.status === 'rescheduled') && within7DaysBerlin(bk.startsAt),
+      );
+      setMyActiveWithin7d(active ?? null);
     })().catch(() => {
-      setFeedback({ kind: 'err', text: 'Failed to load barbers/services.' });
+      setFeedback({ kind: 'err', text: 'Failed to load barbers/services.', reason: undefined });
     });
   }, []);
 
@@ -99,7 +126,7 @@ export default function BookingPage() {
         serviceName,
         durationMin,
         startsAt: selectedSlot,
-        notes: notes.trim() ? notes.trim() : undefined, // ← send only if present
+        notes: notes.trim() ? notes.trim() : undefined,
       });
       setFeedback({
         kind: 'ok',
@@ -109,14 +136,32 @@ export default function BookingPage() {
       setSelectedSlot(null);
       setNotes('');
 
-      // ✅ Redirect after short delay
+      // redirect after short delay
       setTimeout(() => navigate('/dashboard', { replace: true }), 2500);
-    } catch {
-      setFeedback({ kind: 'err', text: 'Booking failed. Please try again.' });
+    } catch (err) {
+      if (isBlockedError(err)) {
+        setFeedback({
+          kind: 'err',
+          text:
+            'Your online booking is restricted due to repeated no-shows. Please call the barbershop to book.',
+          reason: 'blocked',
+        });
+      } else if (isWeeklyLimitError(err)) {
+        setFeedback({
+          kind: 'err',
+          text:
+            'You can only have one active booking within 7 days. Please reschedule your existing booking.',
+          reason: 'weekly',
+        });
+      } else {
+        setFeedback({ kind: 'err', text: 'Booking failed. Please try again.' });
+      }
     } finally {
       setLoading(false);
     }
   }
+
+  const showRescheduleCta = Boolean(myActiveWithin7d);
 
   return (
     <div className="grid md:grid-cols-[1fr_320px] gap-6 md:gap-8 mt-10">
@@ -125,7 +170,7 @@ export default function BookingPage() {
         <div className="bg-neutral-900 text-white px-6 py-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold tracking-tight">Book your appointment</h1>
           <span className="inline-flex items-center gap-2 text-xs text-neutral-300">
-            <span className="h-2 w-2 rounded-full bg-amber-400" />
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
             live availability
           </span>
         </div>
@@ -137,11 +182,16 @@ export default function BookingPage() {
               <label className="block text-sm font-medium text-neutral-700 mb-1">Barber</label>
               <select
                 value={barberId}
-                onChange={(e) => { setBarberId(e.target.value); setSelectedSlot(null); }}
+                onChange={(e) => {
+                  setBarberId(e.target.value);
+                  setSelectedSlot(null);
+                }}
                 className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
               >
                 {barbers.map((b) => (
-                  <option key={b._id} value={b._id}>{b.name}</option>
+                  <option key={b._id} value={b._id}>
+                    {b.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -151,7 +201,10 @@ export default function BookingPage() {
               <label className="block text-sm font-medium text-neutral-700 mb-1">Service</label>
               <select
                 value={serviceId}
-                onChange={(e) => { setServiceId(e.target.value); setSelectedSlot(null); }}
+                onChange={(e) => {
+                  setServiceId(e.target.value);
+                  setSelectedSlot(null);
+                }}
                 className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
               >
                 {services.map((s) => (
@@ -169,7 +222,10 @@ export default function BookingPage() {
                 type="date"
                 value={date}
                 min={todayYMD()}
-                onChange={(e) => { setDate(e.target.value); setSelectedSlot(null); }}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setSelectedSlot(null);
+                }}
                 className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
             </div>
@@ -177,9 +233,7 @@ export default function BookingPage() {
 
           {/* NEW: Notes */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Notes (optional)
-            </label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Notes (optional)</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -192,14 +246,26 @@ export default function BookingPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleCheck}
-              disabled={loading || !barberId || !serviceId || !date}
-              className="inline-flex items-center rounded-lg bg-amber-400 text-neutral-900 font-semibold px-4 py-2 hover:bg-amber-300 transition disabled:opacity-60"
-            >
-              {loading ? 'Loading…' : 'Check availability'}
-            </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            {!showRescheduleCta && (
+              <button
+                onClick={handleCheck}
+                disabled={loading || !barberId || !serviceId || !date}
+                className="inline-flex items-center rounded-lg bg-amber-400 text-neutral-900 font-semibold px-4 py-2 hover:bg-amber-300 transition disabled:opacity-60"
+              >
+                {loading ? 'Loading…' : 'Check availability'}
+              </button>
+            )}
+
+            {showRescheduleCta && (
+              <a
+                href="/dashboard"
+                className="inline-flex items-center rounded-lg border border-amber-300 text-neutral-900 font-semibold px-4 py-2 hover:bg-amber-50 transition"
+                title="You already have an active booking in the next 7 days. Reschedule it instead."
+              >
+                Go to My Bookings to reschedule
+              </a>
+            )}
 
             {feedback && (
               <div
@@ -209,50 +275,57 @@ export default function BookingPage() {
                     : 'bg-rose-50 text-rose-700 border-rose-200'
                 }`}
               >
-                {feedback.text}
+                {feedback.text}{' '}
+                {feedback.kind === 'err' && feedback.reason === 'blocked' && (
+                  <a href="tel:+490000000000" className="underline underline-offset-4 ml-1">
+                    Call now
+                  </a>
+                )}
               </div>
             )}
           </div>
 
           {/* Slots */}
-          <div className="mt-2">
-            <h2 className="text-sm font-medium text-neutral-700 mb-2">Available slots</h2>
-            {!slots.length && !loading && (
-              <p className="text-neutral-500 text-sm">
-                Choose options above, then click <span className="font-medium">Check availability</span>.
-              </p>
-            )}
-            {loading && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-10 rounded-lg bg-neutral-200 animate-pulse" />
-                ))}
-              </div>
-            )}
-            {!loading && !!slots.length && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {slots.map((s) => {
-                  const active = selectedSlot === s.start;
-                  return (
-                    <button
-                      key={s.start}
-                      onClick={() => setSelectedSlot(s.start)}
-                      className={`rounded-lg border px-3 py-2 text-sm transition ${
-                        active
-                          ? 'bg-amber-100 border-amber-300 text-neutral-900'
-                          : 'bg-white border-neutral-300 hover:bg-amber-50 text-neutral-800'
-                      }`}
-                      disabled={loading}
-                      title={`${fmtTime(s.start)}–${fmtTime(s.end)}`}
-                      type="button"
-                    >
-                      {fmtTime(s.start)}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {!showRescheduleCta && (
+            <div className="mt-2">
+              <h2 className="text-sm font-medium text-neutral-700 mb-2">Available slots</h2>
+              {!slots.length && !loading && (
+                <p className="text-neutral-500 text-sm">
+                  Choose options above, then click <span className="font-medium">Check availability</span>.
+                </p>
+              )}
+              {loading && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="h-10 rounded-lg bg-neutral-200 animate-pulse" />
+                  ))}
+                </div>
+              )}
+              {!loading && !!slots.length && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {slots.map((s) => {
+                    const active = selectedSlot === s.start;
+                    return (
+                      <button
+                        key={s.start}
+                        onClick={() => setSelectedSlot(s.start)}
+                        className={`rounded-lg border px-3 py-2 text-sm transition ${
+                          active
+                            ? 'bg-amber-100 border-amber-300 text-neutral-900'
+                            : 'bg-white border-neutral-300 hover:bg-amber-50 text-neutral-800'
+                        }`}
+                        disabled={loading}
+                        title={`${fmtTime(s.start)}–${fmtTime(s.end)}`}
+                        type="button"
+                      >
+                        {fmtTime(s.start)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -260,32 +333,61 @@ export default function BookingPage() {
       <aside className="md:sticky md:top-20 h-max rounded-2xl bg-white border border-neutral-200 shadow-sm p-6">
         <h3 className="text-base font-semibold text-neutral-900">Summary</h3>
         <dl className="mt-3 space-y-2 text-sm">
-          <div className="flex justify-between"><dt className="text-neutral-600">Barber</dt>
-            <dd className="font-medium text-neutral-900">{barbers.find((b) => b._id === barberId)?.name ?? '—'}</dd></div>
-          <div className="flex justify-between"><dt className="text-neutral-600">Service</dt>
-            <dd className="font-medium text-neutral-900">{serviceName} ({durationMin} min)</dd></div>
-          <div className="flex justify-between"><dt className="text-neutral-600">Date</dt>
-            <dd className="font-medium text-neutral-900">{date || '—'}</dd></div>
-          <div className="flex justify-between"><dt className="text-neutral-600">Time</dt>
-            <dd className="font-medium text-neutral-900">{selectedSlot ? fmtTime(selectedSlot) : '—'}</dd></div>
-          <div className="flex justify-between"><dt className="text-neutral-600">Price</dt>
-            <dd className="font-medium text-neutral-900">€{chosenService?.price ?? 0}</dd></div>
+          <div className="flex justify-between">
+            <dt className="text-neutral-600">Barber</dt>
+            <dd className="font-medium text-neutral-900">
+              {barbers.find((b) => b._id === barberId)?.name ?? '—'}
+            </dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-neutral-600">Service</dt>
+            <dd className="font-medium text-neutral-900">
+              {serviceName} ({durationMin} min)
+            </dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-neutral-600">Date</dt>
+            <dd className="font-medium text-neutral-900">{date || '—'}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-neutral-600">Time</dt>
+            <dd className="font-medium text-neutral-900">{selectedSlot ? fmtTime(selectedSlot) : '—'}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-neutral-600">Price</dt>
+            <dd className="font-medium text-neutral-900">€{chosenService?.price ?? 0}</dd>
+          </div>
           {notes.trim() && (
-            <div className="flex justify-between"><dt className="text-neutral-600">Notes</dt>
-              <dd className="font-medium text-neutral-900 max-w-[180px] text-right truncate" title={notes}>
+            <div className="flex justify-between">
+              <dt className="text-neutral-600">Notes</dt>
+              <dd
+                className="font-medium text-neutral-900 max-w-[180px] text-right truncate"
+                title={notes}
+              >
                 {notes}
               </dd>
             </div>
           )}
         </dl>
 
-        <button
-          onClick={handleConfirm}
-          disabled={loading || !selectedSlot || !barberId || !serviceId}
-          className="mt-5 w-full rounded-lg bg-neutral-900 text-white font-semibold py-2 hover:bg-neutral-800 transition disabled:opacity-50"
-        >
-          {loading ? 'Booking…' : 'Confirm booking'}
-        </button>
+        {!showRescheduleCta && (
+          <button
+            onClick={handleConfirm}
+            disabled={loading || !selectedSlot || !barberId || !serviceId}
+            className="mt-5 w-full rounded-lg bg-neutral-900 text-white font-semibold py-2 hover:bg-neutral-800 transition disabled:opacity-50"
+          >
+            {loading ? 'Booking…' : 'Confirm booking'}
+          </button>
+        )}
+
+        {showRescheduleCta && (
+          <a
+            href="/dashboard"
+            className="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-neutral-900 text-white font-semibold py-2 hover:bg-neutral-800 transition"
+          >
+            Go to My Bookings to reschedule
+          </a>
+        )}
 
         <p className="mt-3 text-xs text-neutral-500">
           You’ll see your appointment soon in <span className="font-medium">My Bookings</span>.

@@ -11,7 +11,12 @@ import { patchAdminBooking } from "../../api/adminBookings";
 import TimeField from "../../components/TimeField";
 import toast from "react-hot-toast";
 import { errorMessage } from "../../lib/errors";
-import { formatBerlin, localInputToUtcIso, isoToLocalInput } from '../../utils/datetime';
+import {
+  formatBerlin,
+  localInputToUtcIso,
+  isoToLocalInput,
+} from "../../utils/datetime";
+import { adminMarkNoShow } from "../../api/bookings";
 
 interface AdminBooking {
   _id: string;
@@ -19,7 +24,7 @@ interface AdminBooking {
   durationMin: number;
   startsAt: string;
   endsAt: string;
-  status: "booked" | "cancelled" | "completed" | string;
+  status: "booked" | "cancelled" | "completed" | "no_show" | "rescheduled" | string;
   user?: { id: string; name?: string; email?: string };
   barber?: { id: string; name?: string };
   notes?: string;
@@ -158,6 +163,37 @@ export default function AdminBookingsPage() {
     },
   });
 
+  const noShowMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await adminMarkNoShow(id);
+      return res;
+    },
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: qKey });
+      const prev = qc.getQueryData<AdminResponse>(qKey);
+      if (prev) {
+        const next: AdminResponse = {
+          ...prev,
+          bookings: prev.bookings.map((b) =>
+            b._id === id ? { ...b, status: "no_show" } : b
+          ),
+        };
+        qc.setQueryData(qKey, next);
+      }
+      return { prev };
+    },
+    onSuccess: () => {
+      toast.success("Marked as no-show.");
+    },
+    onError: (err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
+      toast.error(errorMessage(err));
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: qKey });
+    },
+  });
+
   // --------- edit modal state ----------
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -209,6 +245,7 @@ export default function AdminBookingsPage() {
   const isActing =
     cancelMutation.isPending ||
     completeMutation.isPending ||
+    noShowMutation.isPending ||
     patchMutation.isPending;
 
   return (
@@ -227,7 +264,7 @@ export default function AdminBookingsPage() {
       </div>
 
       {/* Filters */}
-      <div className="grid gap-3 grid-cols-1 md:grid-cols-5 bg-white border border-neutral-200 rounded-xl p-4">
+      <div className="grid gap-3 grid-cols-1 md:grid-cols-6 bg-white border border-neutral-200 rounded-xl p-4">
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
@@ -235,6 +272,8 @@ export default function AdminBookingsPage() {
         >
           <option value="">All statuses</option>
           <option value="booked">Booked</option>
+          <option value="rescheduled">Rescheduled</option>
+          <option value="no_show">No-Show</option>
           <option value="cancelled">Cancelled</option>
           <option value="completed">Completed</option>
         </select>
@@ -274,6 +313,19 @@ export default function AdminBookingsPage() {
           className="rounded-lg border border-neutral-300 px-3 py-2"
           placeholder="Search customer (name/email)"
         />
+
+        <button
+          onClick={() => {
+            setStatus("");
+            setBarberId("");
+            setDateFrom("");
+            setDateTo("");
+            setQ("");
+          }}
+          className="rounded-lg border border-neutral-300 px-3 py-2 hover:bg-neutral-100"
+        >
+          Reset
+        </button>
       </div>
 
       {isLoading && (
@@ -301,8 +353,10 @@ export default function AdminBookingsPage() {
             </thead>
             <tbody>
               {bookings.map((b) => {
-                const canCancel = b.status === "booked";
-                const canComplete = b.status === "booked";
+                const canEdit = b.status === "booked";
+                const canCancel = b.status === "booked" || b.status === "rescheduled";
+                const canComplete = b.status === "booked" || b.status === "rescheduled";
+                const canNoShow = b.status === "booked" || b.status === "rescheduled";
                 return (
                   <tr
                     key={b._id}
@@ -350,12 +404,12 @@ export default function AdminBookingsPage() {
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => openEdit(b)}
-                          disabled={b.status !== "booked" || isActing}
+                          disabled={!canEdit || isActing}
                           className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
                           title={
-                            b.status !== "booked"
-                              ? "Only booked appointments can be edited"
-                              : "Edit booking"
+                            canEdit
+                              ? "Edit booking"
+                              : "Only booked appointments can be edited"
                           }
                         >
                           Edit
@@ -367,6 +421,14 @@ export default function AdminBookingsPage() {
                           title="Cancel booking"
                         >
                           Cancel
+                        </button>
+                        <button
+                          disabled={!canNoShow || isActing}
+                          onClick={() => noShowMutation.mutate(b._id)}
+                          className="rounded-md border border-amber-300 px-3 py-1.5 hover:bg-amber-50 disabled:opacity-50"
+                          title="Mark as no-show"
+                        >
+                          No-Show
                         </button>
                         <button
                           disabled={!canComplete || isActing}
@@ -517,6 +579,8 @@ export default function AdminBookingsPage() {
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     booked: "bg-amber-100 text-amber-800 border-amber-200",
+    rescheduled: "bg-sky-100 text-sky-800 border-sky-200",
+    no_show: "bg-rose-100 text-rose-800 border-rose-200",
     cancelled: "bg-rose-100 text-rose-800 border-rose-200",
     completed: "bg-green-100 text-green-800 border-green-200",
   };
