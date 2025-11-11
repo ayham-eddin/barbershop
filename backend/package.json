@@ -8,7 +8,7 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src --ext .ts",
-    "seed": "tsx -r ./src/config/loadEnv.ts scripts/seed.ts",
+    "seed": "ts-node -r tsconfig-paths/register scripts/seed.ts",
     "test": "jest --runInBand --detectOpenHandles",
     "test:cov": "jest --coverage --runInBand --detectOpenHandles",
     "coverage:open": "open coverage/lcov-report/index.html",

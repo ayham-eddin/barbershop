@@ -7,6 +7,7 @@ import {
   type Booking,
   type BookingStatus,
 } from '../api/bookings';
+import { getMe } from '../api/me';
 import Spinner from '../components/Spinner';
 import { notify } from '../lib/notify';
 import { formatBerlin } from '../utils/datetime';
@@ -24,6 +25,14 @@ function isActive(status: BookingStatus) {
 export default function DashboardPage() {
   const qc = useQueryClient();
 
+  // ✅ Fetch user info (warnings / block)
+  const { data: me } = useQuery({
+    queryKey: ['me'],
+    queryFn: getMe,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // ✅ Fetch bookings
   const { data, isLoading, isError } = useQuery({
     queryKey: ['me', 'bookings'],
     queryFn: getMyBookings,
@@ -32,7 +41,7 @@ export default function DashboardPage() {
     refetchOnWindowFocus: false,
   });
 
-  // Cancel
+  // Cancel mutation
   const cancelMut = useMutation({
     mutationFn: (id: string) => cancelBooking(id),
     onMutate: async (id) => {
@@ -106,6 +115,21 @@ export default function DashboardPage() {
           View and manage your upcoming appointments.
         </p>
       </header>
+
+      {/* ⚠️ Warning or block banners */}
+      {me?.is_online_booking_blocked && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
+          ⚠️ Your online booking is restricted due to repeated no-shows. Please call the barbershop
+          to book in person.
+        </div>
+      )}
+
+      {!me?.is_online_booking_blocked && (me?.warning_count ?? 0) > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 px-4 py-3 text-sm">
+          ⚠️ You have {me?.warning_count ?? 0} warning
+          {(me?.warning_count ?? 0) > 1 ? 's' : ''} for missed appointments.
+        </div>
+      )}
 
       {isLoading && (
         <div className="grid gap-4 md:grid-cols-2">
@@ -232,7 +256,6 @@ function BookingCard({
 }) {
   const past = isPast(booking.startsAt);
   const canCancel = (booking.status === 'booked' || booking.status === 'rescheduled') && !past;
-
   const barberLabel = booking.barber?.name ?? booking.barber?.id ?? booking.barberId;
 
   return (

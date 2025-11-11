@@ -25,7 +25,7 @@ interface AdminBooking {
   startsAt: string;
   endsAt: string;
   status: "booked" | "cancelled" | "completed" | "no_show" | "rescheduled" | string;
-  user?: { id: string; name?: string; email?: string };
+  user?: { id: string; name?: string; email?: string; warning_count?: number };
   barber?: { id: string; name?: string };
   notes?: string;
 }
@@ -163,10 +163,11 @@ export default function AdminBookingsPage() {
     },
   });
 
+  // Mark no-show (optimistic)
   const noShowMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await adminMarkNoShow(id);
-      return res;
+      // returns { booking }
+      return adminMarkNoShow(id);
     },
     onMutate: async (id: string) => {
       await qc.cancelQueries({ queryKey: qKey });
@@ -425,8 +426,8 @@ export default function AdminBookingsPage() {
                         <button
                           disabled={!canNoShow || isActing}
                           onClick={() => noShowMutation.mutate(b._id)}
-                          className="rounded-md border border-amber-300 px-3 py-1.5 hover:bg-amber-50 disabled:opacity-50"
-                          title="Mark as no-show"
+                          className="rounded-md border border-rose-300 text-rose-800 px-3 py-1.5 hover:bg-rose-50 disabled:opacity-50"
+                          title="Mark no-show (adds a warning; blocks at 2)"
                         >
                           No-Show
                         </button>
@@ -581,7 +582,7 @@ function StatusBadge({ status }: { status: string }) {
     booked: "bg-amber-100 text-amber-800 border-amber-200",
     rescheduled: "bg-sky-100 text-sky-800 border-sky-200",
     no_show: "bg-rose-100 text-rose-800 border-rose-200",
-    cancelled: "bg-rose-100 text-rose-800 border-rose-200",
+    cancelled: "bg-neutral-100 text-neutral-700 border-neutral-200",
     completed: "bg-green-100 text-green-800 border-green-200",
   };
   const color =
@@ -590,7 +591,7 @@ function StatusBadge({ status }: { status: string }) {
     <span
       className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${color}`}
     >
-      {status}
+      {status.replace("_", " ")}
     </span>
   );
 }
