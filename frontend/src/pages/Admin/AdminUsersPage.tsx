@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../api/client";
 import {
@@ -6,9 +6,11 @@ import {
   adminBlockUser,
   adminClearWarning,
 } from "../../api/bookings";
+import { getAdminUser, updateAdminUser, type AdminUser } from "../../api/adminUsers";
 import toast from "react-hot-toast";
 import { errorMessage } from "../../lib/errors";
 import Modal from "../../components/Modal";
+import UserRoleBadge from "../../components/UserRoleBadge";
 
 type UserRow = {
   _id: string;
@@ -35,27 +37,56 @@ export default function AdminUsersPage() {
     staleTime: 5_000,
   });
 
-  // ---- Block modal state ----
-  const [blockOpen, setBlockOpen] = useState(false);
-  const [blockUserId, setBlockUserId] = useState<string | null>(null);
-  const [blockReason, setBlockReason] = useState<string>("");
-
   const rows = data?.users ?? [];
 
-  // ---- Mutations ----
+  /* --------------------- row click → details modal --------------------- */
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const { data: selectedUser, refetch: refetchSelected } = useQuery({
+    queryKey: ["admin-user", selectedId],
+    queryFn: () => getAdminUser(selectedId as string),
+    enabled: !!selectedId,
+    staleTime: 5_000,
+  });
+
+  // editable form state (sync when a new user is loaded)
+  const [form, setForm] = useState<Partial<AdminUser>>({});
+  useEffect(() => {
+    if (selectedUser) {
+      setForm({
+        name: selectedUser.name,
+        email: selectedUser.email,
+        role: selectedUser.role,
+        phone: selectedUser.phone ?? "",
+        address: selectedUser.address ?? "",
+        avatarUrl: selectedUser.avatarUrl ?? "",
+        is_online_booking_blocked: !!selectedUser.is_online_booking_blocked,
+        block_reason: selectedUser.block_reason ?? "",
+      });
+    } else {
+      setForm({});
+    }
+  }, [selectedUser]);
+
+  const onRowClick = (u: UserRow) => {
+    setSelectedId(u._id);
+    setDetailsOpen(true);
+  };
+
+  /* -------------------------- mutations -------------------------- */
   const unblock = useMutation({
     mutationFn: async (id: string) => adminUnblockUser(id),
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: ["admin-users"] });
       const prev = qc.getQueryData<UsersResponse>(["admin-users"]);
       if (prev) {
-        const next: UsersResponse = {
+        qc.setQueryData<UsersResponse>(["admin-users"], {
           ...prev,
           users: prev.users.map(u =>
             u._id === id ? { ...u, is_online_booking_blocked: false, block_reason: "" } : u
           ),
-        };
-        qc.setQueryData(["admin-users"], next);
+        });
       }
       return { prev };
     },
@@ -66,6 +97,7 @@ export default function AdminUsersPage() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
+      if (selectedId) refetchSelected();
     },
   });
 
@@ -76,30 +108,25 @@ export default function AdminUsersPage() {
       await qc.cancelQueries({ queryKey: ["admin-users"] });
       const prev = qc.getQueryData<UsersResponse>(["admin-users"]);
       if (prev) {
-        const next: UsersResponse = {
+        qc.setQueryData<UsersResponse>(["admin-users"], {
           ...prev,
           users: prev.users.map(u =>
             u._id === id
               ? { ...u, is_online_booking_blocked: true, block_reason: reason ?? "" }
               : u
           ),
-        };
-        qc.setQueryData(["admin-users"], next);
+        });
       }
       return { prev };
     },
-    onSuccess: () => {
-      toast.success("User blocked.");
-      setBlockOpen(false);
-      setBlockUserId(null);
-      setBlockReason("");
-    },
+    onSuccess: () => toast.success("User blocked."),
     onError: (err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(["admin-users"], ctx.prev);
       toast.error(errorMessage(err));
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
+      if (selectedId) refetchSelected();
     },
   });
 
@@ -109,15 +136,14 @@ export default function AdminUsersPage() {
       await qc.cancelQueries({ queryKey: ["admin-users"] });
       const prev = qc.getQueryData<UsersResponse>(["admin-users"]);
       if (prev) {
-        const next: UsersResponse = {
+        qc.setQueryData<UsersResponse>(["admin-users"], {
           ...prev,
           users: prev.users.map(u =>
             u._id === id
               ? { ...u, warning_count: Math.max(0, (u.warning_count ?? 0) - 1) }
               : u
           ),
-        };
-        qc.setQueryData(["admin-users"], next);
+        });
       }
       return { prev };
     },
@@ -128,12 +154,69 @@ export default function AdminUsersPage() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
+      if (selectedId) refetchSelected();
+    },
+  });
+
+  const saveDetails = useMutation({
+    mutationFn: async () => {
+      if (!selectedId) return null;
+      const payload = {
+        name: form.name?.trim() || undefined,
+        email: form.email?.trim() || undefined,
+        role: form.role, // 'user' | 'admin' | undefined (ok)
+        phone: form.phone?.toString().trim() || undefined,
+        address: form.address?.toString().trim() || undefined,
+        // send undefined when empty; backend tolerates undefined and has its own empty→undefined handling
+        avatarUrl: form.avatarUrl?.toString().trim() || undefined,
+        is_online_booking_blocked: form.is_online_booking_blocked,
+        // IMPORTANT: don't send null; undefined means “no change”
+        block_reason: form.block_reason?.toString().trim() || undefined,
+      };
+      return updateAdminUser(selectedId, payload);
+    },
+    onMutate: async () => {
+      if (!selectedId) return { prevList: undefined };
+      await qc.cancelQueries({ queryKey: ["admin-users"] });
+      const prevList = qc.getQueryData<UsersResponse>(["admin-users"]);
+      if (prevList) {
+        qc.setQueryData<UsersResponse>(["admin-users"], {
+          ...prevList,
+          users: prevList.users.map(u =>
+            u._id === selectedId
+              ? {
+                  ...u,
+                  name: form.name?.trim() || u.name,
+                  email: form.email?.trim() || u.email,
+                  role: (form.role as 'user' | 'admin' | undefined) ?? u.role,
+                  is_online_booking_blocked:
+                    form.is_online_booking_blocked ?? u.is_online_booking_blocked,
+                  block_reason:
+                    (form.block_reason?.toString().trim() || u.block_reason || "") || undefined,
+                }
+              : u
+          ),
+        });
+      }
+      return { prevList };
+    },
+    onSuccess: () => {
+      toast.success("User updated.");
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.prevList) qc.setQueryData(["admin-users"], ctx.prevList);
+      toast.error(errorMessage(err));
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      if (selectedId) refetchSelected();
     },
   });
 
   const isWorking =
-    unblock.isPending || block.isPending || clearWarning.isPending;
+    unblock.isPending || block.isPending || clearWarning.isPending || saveDetails.isPending;
 
+  /* ------------------------------ UI ------------------------------ */
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center justify-between">
@@ -178,11 +261,12 @@ export default function AdminUsersPage() {
                 return (
                   <tr
                     key={u._id}
-                    className="border-t border-neutral-100 hover:bg-neutral-50 transition"
+                    className="border-t border-neutral-100 hover:bg-neutral-50 transition cursor-pointer"
+                    onClick={() => onRowClick(u)}
                   >
                     <td className="px-4 py-3">{u.name}</td>
                     <td className="px-4 py-3 text-neutral-700">{u.email}</td>
-                    <td className="px-4 py-3">{u.role}</td>
+                    <td className="px-4 py-3"><UserRoleBadge role={u.role} /></td>
                     <td className="px-4 py-3">{warnings}</td>
                     <td className="px-4 py-3">
                       {blocked ? (
@@ -198,33 +282,22 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3 text-neutral-600">
                       {u.block_reason ?? "—"}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
-                        {/* Remove one warning */}
                         <button
                           disabled={warnings === 0 || isWorking}
                           onClick={() => clearWarning.mutate(u._id)}
                           className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-                          title={
-                            warnings === 0
-                              ? "No warnings to remove"
-                              : "Remove one warning"
-                          }
+                          title={warnings === 0 ? "No warnings to remove" : "Remove one warning"}
                         >
                           Remove warning
                         </button>
-
-                        {/* Block / Unblock */}
                         {!blocked ? (
                           <button
                             disabled={isWorking}
-                            onClick={() => {
-                              setBlockUserId(u._id);
-                              setBlockReason("");
-                              setBlockOpen(true);
-                            }}
+                            onClick={() => block.mutate({ id: u._id, reason: undefined })}
                             className="rounded-md border border-amber-300 px-3 py-1.5 hover:bg-amber-50"
-                            title="Block user (optional reason)"
+                            title="Block user"
                           >
                             Block
                           </button>
@@ -245,10 +318,7 @@ export default function AdminUsersPage() {
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="px-4 py-8 text-center text-neutral-500"
-                  >
+                  <td colSpan={7} className="px-4 py-8 text-center text-neutral-500">
                     No users found.
                   </td>
                 </tr>
@@ -258,52 +328,138 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {/* Block Modal */}
+      {/* Details/Edit Modal */}
       <Modal
-        open={blockOpen}
-        title="Block user"
+        open={detailsOpen}
+        title="User details"
         onClose={() => {
-          if (!block.isPending) setBlockOpen(false);
+          if (!isWorking) {
+            setDetailsOpen(false);
+            setSelectedId(null);
+          }
         }}
       >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!blockUserId) return;
-            block.mutate({ id: blockUserId, reason: blockReason.trim() || undefined });
-          }}
-          className="space-y-3"
-        >
-          <label className="block text-sm font-medium text-neutral-700">
-            Reason (optional)
-            <input
-              type="text"
-              value={blockReason}
-              onChange={(e) => setBlockReason(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              placeholder="e.g., repeated no-shows"
-              maxLength={300}
-            />
-          </label>
+        {!selectedUser ? (
+          <div className="text-sm text-neutral-600">Loading…</div>
+        ) : (
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveDetails.mutate();
+            }}
+          >
+            <div className="grid sm:grid-cols-2 gap-3">
+              <label className="block text-sm font-medium text-neutral-700">
+                Name
+                <input
+                  type="text"
+                  value={form.name ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+                  required
+                />
+              </label>
+              <label className="block text-sm font-medium text-neutral-700">
+                Email
+                <input
+                  type="email"
+                  value={form.email ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+                  required
+                />
+              </label>
+              <label className="block text-sm font-medium text-neutral-700">
+                Role
+                <select
+                  value={form.role ?? "user"}
+                  onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as 'user' | 'admin' }))}
+                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+                >
+                  <option value="user">user</option>
+                  <option value="admin">admin</option>
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-neutral-700">
+                Phone
+                <input
+                  type="text"
+                  value={form.phone ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+                />
+              </label>
+              <label className="block text-sm font-medium text-neutral-700 sm:col-span-2">
+                Address
+                <input
+                  type="text"
+                  value={form.address ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+                />
+              </label>
+              <label className="block text-sm font-medium text-neutral-700 sm:col-span-2">
+                Avatar URL
+                <input
+                  type="url"
+                  value={form.avatarUrl ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, avatarUrl: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+                />
+              </label>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setBlockOpen(false)}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
-              disabled={block.isPending}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={block.isPending || !blockUserId}
-              className="rounded-md bg-amber-500 text-neutral-900 px-4 py-1.5 hover:bg-amber-400 disabled:opacity-50"
-            >
-              {block.isPending ? "Blocking…" : "Confirm block"}
-            </button>
-          </div>
-        </form>
+              <label className="flex items-center gap-2 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={!!form.is_online_booking_blocked}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, is_online_booking_blocked: e.target.checked }))
+                  }
+                />
+                <span className="text-sm text-neutral-800">Blocked from online booking</span>
+              </label>
+              <label className="block text-sm font-medium text-neutral-700 sm:col-span-2">
+                Block reason (optional)
+                <input
+                  type="text"
+                  value={form.block_reason ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, block_reason: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+                  placeholder="e.g., repeated no-shows"
+                  maxLength={300}
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-between items-center pt-2">
+              <div className="text-xs text-neutral-500">
+                Created: {new Date(selectedUser.createdAt ?? '').toLocaleString() || '—'} · Updated:{" "}
+                {new Date(selectedUser.updatedAt ?? '').toLocaleString() || '—'}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetailsOpen(false);
+                    setSelectedId(null);
+                  }}
+                  className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+                  disabled={isWorking}
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={saveDetails.isPending}
+                  className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
+                >
+                  {saveDetails.isPending ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   );

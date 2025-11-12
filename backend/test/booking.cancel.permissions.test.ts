@@ -4,7 +4,11 @@ import { api, resetDb, createAdminToken } from './helpers';
 function readPath(obj: unknown, path: string[]): unknown {
   let cur: unknown = obj;
   for (const key of path) {
-    if (typeof cur !== 'object' || cur === null || !(key in (cur as Record<string, unknown>))) {
+    if (
+      typeof cur !== 'object' ||
+      cur === null ||
+      !(key in (cur as Record<string, unknown>))
+    ) {
       throw new Error(`Missing path: ${path.join('.')}`);
     }
     cur = (cur as Record<string, unknown>)[key];
@@ -16,13 +20,17 @@ function readString(obj: unknown, path: string[]): string {
   if (typeof v !== 'string') throw new Error(`Expected string at ${path.join('.')}`);
   return v;
 }
+
 async function registerAndLogin(email: string, password = 'secret123'): Promise<string> {
   const r = await api.post('/api/auth/register').send({ name: 'User', email, password });
-  if (r.status !== 201) throw new Error(`register failed: ${r.status} ${JSON.stringify(r.body)}`);
+  if (r.status !== 201) {
+    throw new Error(`register failed: ${r.status} ${JSON.stringify(r.body)}`);
+  }
   const login = await api.post('/api/auth/login').send({ email, password }).expect(200);
-  const token = readString(login.body, ['token']);
-  return token;
+  return readString(login.body, ['token']);
 }
+
+// Find a future weekday in YYYY-MM-DD
 function futureWeekdayYMD(minDaysAhead = 3): string {
   const base = new Date();
   base.setUTCHours(0, 0, 0, 0);
@@ -53,15 +61,17 @@ describe('Booking cancel permissions', () => {
   it('does not allow a different user to cancel someone else\'s booking (404)', async () => {
     const admin = await createAdminToken({});
 
-    // Seed service
-    const sRes = await api.post('/api/admin/services')
+    // Seed service (admin)
+    const sRes = await api
+      .post('/api/admin/services')
       .set('Authorization', `Bearer ${admin}`)
       .send({ name: 'Haircut', durationMin: 30, price: 20 })
       .expect(201);
     const serviceId = readString(sRes.body, ['service', '_id']);
 
-    // Seed barber
-    const bRes = await api.post('/api/admin/barbers')
+    // Seed barber (admin)
+    const bRes = await api
+      .post('/api/admin/barbers')
       .set('Authorization', `Bearer ${admin}`)
       .send({
         name: 'Barber B',
@@ -77,17 +87,22 @@ describe('Booking cancel permissions', () => {
       .expect(201);
     const barberId = readString(bRes.body, ['barber', '_id']);
 
-    // User A books
+    // User A books a slot
     const tokenA = await registerAndLogin('permA@example.com');
     const date = futureWeekdayYMD(3);
-    const slotsRes = await api.get(`/api/barbers/${barberId}/slots`)
-      .query({ date, duration: 30 })
+
+    // NEW endpoint for availability
+    const availRes = await api
+      .get('/api/bookings/availability')
+      .query({ barberId, date, durationMin: 30 })
       .expect(200);
-    const slots = readPath(slotsRes.body, ['slots']);
+
+    const slots = readPath(availRes.body, ['slots']);
     if (!Array.isArray(slots) || slots.length === 0) throw new Error('no slots');
     const startsAt = readString(slots[0], ['start']);
 
-    const bookRes = await api.post('/api/bookings')
+    const bookRes = await api
+      .post('/api/bookings')
       .set('Authorization', `Bearer ${tokenA}`)
       .send({
         barberId,
@@ -98,9 +113,10 @@ describe('Booking cancel permissions', () => {
       .expect(201);
     const bookingId = readString(bookRes.body, ['booking', '_id']);
 
-    // User B tries to cancel A's booking -> 404 (not found for that user)
+    // User B tries to cancel A's booking -> 404
     const tokenB = await registerAndLogin('permB@example.com');
-    await api.post(`/api/bookings/${bookingId}/cancel`)
+    await api
+      .post(`/api/bookings/${bookingId}/cancel`)
       .set('Authorization', `Bearer ${tokenB}`)
       .expect(404);
   });

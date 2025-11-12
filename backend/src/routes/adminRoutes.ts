@@ -1,22 +1,30 @@
-// src/routes/adminRoutes.ts
+// backend/src/routes/adminRoutes.ts
 import { Router, type Request, type Response } from 'express';
 import { Types } from 'mongoose';
 import { z } from 'zod';
 
 import { requireAuth } from '@src/middleware/requireAuth';
+import type { AuthRequest } from '@src/middleware/requireAuth';
 import { requireAdmin } from '@src/middleware/requireAdmin';
 import {
   validateBody,
-  validateQuery,
   validateParams,
+  validateQuery,
 } from '@src/middleware/validate';
 
 import { User } from '@src/models/User';
 import { TimeOff } from '@src/models/TimeOff';
-import type { AuthRequest } from '@src/middleware/requireAuth';
 import { AuditLog } from '@src/models/AuditLog';
 
 const admin = Router();
+
+/* ───────────────────────── Helpers ───────────────────────── */
+
+const toObjectId = (id: string): Types.ObjectId => new Types.ObjectId(id);
+
+// Treat empty string as “not provided”
+const emptyToUndef = (v: unknown): string | undefined =>
+  typeof v === 'string' && v.trim() === '' ? undefined : (v as string | undefined);
 
 /* ───────────────────────── Zod Schemas ───────────────────────── */
 
@@ -24,9 +32,7 @@ const objectId = z
   .string()
   .refine((v) => Types.ObjectId.isValid(v), { message: 'Invalid ObjectId' });
 
-const isoDate = z
-  .string()
-  .refine((s) => !Number.isNaN(Date.parse(s)), { message: 'Invalid date' });
+const isoDate = z.string().refine((s) => !Number.isNaN(Date.parse(s)), { message: 'Invalid date' });
 
 const timeOffBodySchema = z.object({
   barberId: objectId,
@@ -50,9 +56,23 @@ const blockBodySchema = z.object({
 
 const clearWarnParamsSchema = z.object({ id: objectId });
 
+// Admin user read/patch
+const userParamsSchema = z.object({ id: objectId });
+
+const userPatchSchema = z.object({
+  name: z.string().min(2).max(120).optional(),
+  email: z.string().email().optional(),
+  role: z.enum(['user', 'admin']).optional(),
+  phone: z.string().max(100).optional(),          
+  address: z.string().max(300).optional(),        
+  avatarUrl: z.union([z.string().url(), z.literal('')]).optional(), 
+  is_online_booking_blocked: z.boolean().optional(),
+  block_reason: z.string().max(300).optional(),  
+});
+
 /* ─────────────────────────── Routes ──────────────────────────── */
 
-// GET /api/admin/users  (admin only)
+// GET /api/admin/users
 admin.get(
   '/users',
   requireAuth,
@@ -63,7 +83,110 @@ admin.get(
   },
 );
 
-// POST /api/admin/timeoff  (create time-off block)
+// GET /api/admin/users/:id
+admin.get(
+  '/users/:id',
+  requireAuth,
+  requireAdmin,
+  validateParams(userParamsSchema),
+  async (req: Request, res: Response) => {
+    const { id } = req.params as z.infer<typeof userParamsSchema>;
+    const user = await User.findById(toObjectId(id), { passwordHash: 0 }).lean().exec();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    return res.json({ user });
+  },
+);
+
+// PATCH /api/admin/users/:id
+admin.patch(
+  '/users/:id',
+  requireAuth,
+  requireAdmin,
+  validateParams(userParamsSchema),
+  validateBody(userPatchSchema),
+  async (req: AuthRequest, res: Response) => {
+    const { id } = req.params as z.infer<typeof userParamsSchema>;
+    const patch = req.body as z.infer<typeof userPatchSchema>;
+    const _id = toObjectId(id);
+
+    const user = await User.findById(_id).exec();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Snapshot BEFORE
+    const before = {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone ?? null,
+      address: user.address ?? null,
+      avatarUrl: user.avatarUrl ?? null,
+      is_online_booking_blocked: user.is_online_booking_blocked,
+      block_reason: user.block_reason ?? null,
+    };
+
+    // Apply patch (without any-casts)
+    if (patch.name !== undefined) user.name = patch.name;
+    if (patch.email !== undefined) user.email = patch.email;
+    if (patch.role !== undefined) user.role = patch.role;
+
+    if ('phone' in patch) user.phone = emptyToUndef(patch.phone);
+    if ('address' in patch) user.address = emptyToUndef(patch.address);
+    if ('avatarUrl' in patch) user.avatarUrl = emptyToUndef(patch.avatarUrl);
+
+    if (patch.is_online_booking_blocked !== undefined) {
+      user.is_online_booking_blocked = patch.is_online_booking_blocked;
+      if (!patch.is_online_booking_blocked) {
+        user.block_reason = undefined;
+      }
+    }
+    if ('block_reason' in patch) {
+      user.block_reason = emptyToUndef(patch.block_reason);
+    }
+
+    await user.save();
+
+    // Actor for audit
+    const actorSub = req.user?.sub ?? '';
+    const actorId = Types.ObjectId.isValid(actorSub) ? new Types.ObjectId(actorSub) : null;
+
+    await AuditLog.create({
+      actorId,
+      action: 'user.update',
+      entityType: 'user',
+      entityId: user._id,
+      before,
+      after: {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone ?? null,
+        address: user.address ?? null,
+        avatarUrl: user.avatarUrl ?? null,
+        is_online_booking_blocked: user.is_online_booking_blocked,
+        block_reason: user.block_reason ?? null,
+      },
+    });
+
+    // Build safe response (without passwordHash)
+    const out = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone ?? null,
+      address: user.address ?? null,
+      avatarUrl: user.avatarUrl ?? null,
+      is_online_booking_blocked: user.is_online_booking_blocked,
+      block_reason: user.block_reason ?? null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    return res.json({ user: out });
+  },
+);
+
+// POST /api/admin/timeoff
 admin.post(
   '/timeoff',
   requireAuth,
@@ -71,20 +194,17 @@ admin.post(
   validateBody(timeOffBodySchema),
   async (req: Request, res: Response) => {
     const body = req.body as z.infer<typeof timeOffBodySchema>;
-    const { barberId, start, end, reason } = body;
-
     const doc = await TimeOff.create({
-      barberId: new Types.ObjectId(barberId),
-      start: new Date(start),
-      end: new Date(end),
-      reason,
+      barberId: toObjectId(body.barberId),
+      start: new Date(body.start),
+      end: new Date(body.end),
+      reason: body.reason,
     });
-
     return res.status(201).json({ timeoff: doc });
   },
 );
 
-// GET /api/admin/timeoff?barberId=...  (list time-off; optional filter)
+// GET /api/admin/timeoff
 admin.get(
   '/timeoff',
   requireAuth,
@@ -92,18 +212,13 @@ admin.get(
   validateQuery(timeOffQuerySchema),
   async (req: Request, res: Response) => {
     const { barberId } = req.query as z.infer<typeof timeOffQuerySchema>;
-
-    const filter =
-      barberId != null
-        ? { barberId: new Types.ObjectId(barberId) }
-        : {};
-
+    const filter = barberId ? { barberId: toObjectId(barberId) } : {};
     const items = await TimeOff.find(filter).sort({ start: 1 }).lean().exec();
     return res.json({ timeoff: items });
   },
 );
 
-// DELETE /api/admin/timeoff/:id  (remove a time-off block)
+// DELETE /api/admin/timeoff/:id
 admin.delete(
   '/timeoff/:id',
   requireAuth,
@@ -111,19 +226,13 @@ admin.delete(
   validateParams(timeOffParamsSchema),
   async (req: Request, res: Response) => {
     const { id } = req.params as z.infer<typeof timeOffParamsSchema>;
-
-    const deleted = await TimeOff.findByIdAndDelete(new Types.ObjectId(id))
-      .lean()
-      .exec();
-
-    if (!deleted) {
-      return res.status(404).json({ error: 'Time-off not found' });
-    }
+    const deleted = await TimeOff.findByIdAndDelete(toObjectId(id)).lean().exec();
+    if (!deleted) return res.status(404).json({ error: 'Time-off not found' });
     return res.json({ deleted });
   },
 );
 
-// POST /api/admin/users/:id/unblock  (unblock a user)
+// POST /api/admin/users/:id/unblock
 admin.post(
   '/users/:id/unblock',
   requireAuth,
@@ -131,9 +240,7 @@ admin.post(
   validateParams(z.object({ id: objectId })),
   async (req: AuthRequest, res: Response) => {
     const { id } = req.params as { id: string };
-    const _id = new Types.ObjectId(id);
-
-    const user = await User.findById(_id).exec();
+    const user = await User.findById(toObjectId(id)).exec();
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const before = {
@@ -147,9 +254,7 @@ admin.post(
     await user.save();
 
     const actorSub = req.user?.sub ?? '';
-    const actorId = Types.ObjectId.isValid(actorSub)
-      ? new Types.ObjectId(actorSub)
-      : null;
+    const actorId = Types.ObjectId.isValid(actorSub) ? new Types.ObjectId(actorSub) : null;
 
     await AuditLog.create({
       actorId,
@@ -164,13 +269,11 @@ admin.post(
       },
     });
 
-    return res.json({
-      user: { _id: user._id, is_online_booking_blocked: false },
-    });
+    return res.json({ user: { _id: user._id, is_online_booking_blocked: false } });
   },
 );
 
-// POST /api/admin/users/:id/block  (block a user with optional reason)
+// POST /api/admin/users/:id/block
 admin.post(
   '/users/:id/block',
   requireAuth,
@@ -180,9 +283,8 @@ admin.post(
   async (req: AuthRequest, res: Response) => {
     const { id } = req.params as z.infer<typeof blockParamsSchema>;
     const { reason } = req.body as z.infer<typeof blockBodySchema>;
-    const _id = new Types.ObjectId(id);
 
-    const user = await User.findById(_id).exec();
+    const user = await User.findById(toObjectId(id)).exec();
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const before = {
@@ -192,13 +294,11 @@ admin.post(
     };
 
     user.is_online_booking_blocked = true;
-    user.block_reason = reason ?? '';
+    user.block_reason = emptyToUndef(reason) ?? '';
     await user.save();
 
     const actorSub = req.user?.sub ?? '';
-    const actorId = Types.ObjectId.isValid(actorSub)
-      ? new Types.ObjectId(actorSub)
-      : null;
+    const actorId = Types.ObjectId.isValid(actorSub) ? new Types.ObjectId(actorSub) : null;
 
     await AuditLog.create({
       actorId,
@@ -223,7 +323,7 @@ admin.post(
   },
 );
 
-// POST /api/admin/users/:id/clear-warning  (decrement warning_count by 1, not below 0)
+// POST /api/admin/users/:id/clear-warning
 admin.post(
   '/users/:id/clear-warning',
   requireAuth,
@@ -231,9 +331,7 @@ admin.post(
   validateParams(clearWarnParamsSchema),
   async (req: AuthRequest, res: Response) => {
     const { id } = req.params as z.infer<typeof clearWarnParamsSchema>;
-    const _id = new Types.ObjectId(id);
-
-    const user = await User.findById(_id).exec();
+    const user = await User.findById(toObjectId(id)).exec();
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const before = {
@@ -242,16 +340,11 @@ admin.post(
     };
 
     user.warning_count = Math.max(0, (user.warning_count ?? 0) - 1);
-    // If it reaches 0, we can optionally clear last_warning_at
-    if (user.warning_count === 0) {
-      user.last_warning_at = undefined;
-    }
+    if (user.warning_count === 0) user.last_warning_at = undefined;
     await user.save();
 
     const actorSub = req.user?.sub ?? '';
-    const actorId = Types.ObjectId.isValid(actorSub)
-      ? new Types.ObjectId(actorSub)
-      : null;
+    const actorId = Types.ObjectId.isValid(actorSub) ? new Types.ObjectId(actorSub) : null;
 
     await AuditLog.create({
       actorId,
@@ -265,9 +358,7 @@ admin.post(
       },
     });
 
-    return res.json({
-      user: { _id: user._id, warning_count: user.warning_count },
-    });
+    return res.json({ user: { _id: user._id, warning_count: user.warning_count } });
   },
 );
 
