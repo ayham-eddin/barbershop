@@ -39,12 +39,21 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
               <NavLink to="/admin/services" className={linkClass}>
                 Services
               </NavLink>
+              <NavLink to="/admin/users" className={linkClass}>
+                Users
+              </NavLink>
             </>
           )}
 
           {token && role === 'user' && (
             <NavLink to="/dashboard" className={linkClass}>
               My Bookings
+            </NavLink>
+          )}
+
+          {token && (
+            <NavLink to="/profile" className={linkClass}>
+              Profile
             </NavLink>
           )}
 

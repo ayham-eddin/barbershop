@@ -6,6 +6,11 @@ export interface UserDoc extends Document {
   passwordHash: string;
   role: 'user' | 'admin';
 
+  // optional profile
+  phone?: string;
+  address?: string;
+  avatarUrl?: string;
+
   // anti-spam / blocking
   warning_count: number;
   last_warning_at?: Date;
@@ -28,6 +33,11 @@ const UserSchema = new Schema<UserDoc>(
     },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
+
+    // optional profile
+    phone: { type: String },
+    address: { type: String },
+    avatarUrl: { type: String },
 
     // anti-spam / blocking
     warning_count: { type: Number, default: 0 },
