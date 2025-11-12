@@ -42,6 +42,9 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
               <NavLink to="/admin/users" className={linkClass}>
                 Users
               </NavLink>
+              <NavLink to="/admin/timeoff" className={linkClass}>
+                Time off
+              </NavLink>
             </>
           )}
 

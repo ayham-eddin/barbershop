@@ -8,6 +8,7 @@ import AdminBookingsPage from './pages/Admin/AdminBookingsPage';
 import AdminUsersPage from './pages/Admin/AdminUsersPage';
 import BookingPage from './pages/BookingPage';
 import AdminServicesPage from './pages/Admin/AdminServicesPage';
+import AdminTimeOffPage from './pages/Admin/AdminTimeOffPage';
 import ProfilePage from './pages/ProfilePage';
 import { useState, useEffect } from 'react';
 
@@ -71,7 +72,10 @@ export default function App() {
               path="/admin/services" 
               element={token && role === 'admin' ? <AdminServicesPage /> : <Navigate to="/login" />}
             />
-
+            <Route
+              path="/admin/timeoff"
+              element={token && role === 'admin' ? <AdminTimeOffPage /> : <Navigate to="/login" />}
+            />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
