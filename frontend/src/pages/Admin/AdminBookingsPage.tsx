@@ -1,4 +1,3 @@
-// frontend/src/pages/Admin/AdminBookingsPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   useQuery,
@@ -18,14 +17,16 @@ import {
   isoToLocalInput,
 } from "../../utils/datetime";
 import { adminMarkNoShow } from "../../api/bookings";
-import CalendarGrid from "../../components/CalendarGrid";
+import CalendarGrid, { type Booking as CalBooking } from "../../components/CalendarGrid";
+
+/* ----------------------------- Types ----------------------------- */
 
 interface AdminBooking {
   _id: string;
   serviceName: string;
   durationMin: number;
-  startsAt: string;
-  endsAt: string;
+  startsAt: string; // ISO
+  endsAt: string;   // ISO
   status: "booked" | "cancelled" | "completed" | "no_show" | "rescheduled" | string;
   user?: { id: string; name?: string; email?: string; warning_count?: number };
   barber?: { id: string; name?: string };
@@ -45,18 +46,45 @@ interface Barber {
   name: string;
 }
 
+/* ------------------------- Date helpers -------------------------- */
+
+function ymd(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+function addDays(d: Date, n: number) {
+  const c = new Date(d);
+  c.setDate(c.getDate() + n);
+  return c;
+}
+
+/* ========================= Component ============================= */
+
 export default function AdminBookingsPage() {
   const qc = useQueryClient();
 
-  // pagination + filters
+  // Day-view navigation
+  const [viewDate, setViewDate] = useState<Date>(() => new Date());
+  const workingHours = { startHour: 9, endHour: 19 };
+
+  const startDate = useMemo(
+    () => new Date(`${ymd(viewDate)}T${String(workingHours.startHour).padStart(2, "0")}:00:00`),
+    [viewDate, workingHours.startHour]
+  );
+  const endDate = useMemo(
+    () => new Date(`${ymd(viewDate)}T${String(workingHours.endHour).padStart(2, "0")}:00:00`),
+    [viewDate, workingHours.endHour]
+  );
+
+  // filters (list + query)
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<string>("");
   const [barberId, setBarberId] = useState<string>("");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
   const [q, setQ] = useState<string>("");
 
-  // load barbers for the filter dropdown + edit form
+  // barbers for dropdown/edit
   const [barbers, setBarbers] = useState<Barber[]>([]);
   useEffect(() => {
     (async () => {
@@ -65,18 +93,19 @@ export default function AdminBookingsPage() {
     })().catch(() => setBarbers([]));
   }, []);
 
-  // build query string whenever filters/page change
+  // query string
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     params.set("page", String(page));
-    params.set("limit", "5");
+    params.set("limit", "50"); // fetch enough for the day
     if (status) params.set("status", status);
     if (barberId) params.set("barberId", barberId);
-    if (dateFrom) params.set("dateFrom", dateFrom);
-    if (dateTo) params.set("dateTo", dateTo);
+    // bind to the selected day
+    params.set("dateFrom", ymd(viewDate));
+    params.set("dateTo", ymd(viewDate));
     if (q.trim()) params.set("q", q.trim());
     return params.toString();
-  }, [page, status, barberId, dateFrom, dateTo, q]);
+  }, [page, status, barberId, viewDate, q]);
 
   const qKey = ["adminBookings", queryString] as const;
 
@@ -92,17 +121,16 @@ export default function AdminBookingsPage() {
     });
 
   const fmtDate = (iso: string) => formatBerlin(iso);
-
-  const bookings: AdminBooking[] = data?.bookings ?? [];
+  const bookings: AdminBooking[] = useMemo(() => data?.bookings ?? [], [data]);
   const curPage = data?.page ?? page;
   const totalPages = data?.pages ?? 1;
 
-  // reset to first page when any filter changes (except page itself)
   useEffect(() => {
     setPage(1);
-  }, [status, barberId, dateFrom, dateTo, q]);
+  }, [status, barberId, viewDate, q]);
 
-  // --------- admin actions (optimistic) ----------
+  /* ---------------------- Admin mutations ----------------------- */
+
   const cancelMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await api.post(`/api/bookings/admin/${id}/cancel`, {});
@@ -112,26 +140,21 @@ export default function AdminBookingsPage() {
       await qc.cancelQueries({ queryKey: qKey });
       const prev = qc.getQueryData<AdminResponse>(qKey);
       if (prev) {
-        const next: AdminResponse = {
+        qc.setQueryData<AdminResponse>(qKey, {
           ...prev,
           bookings: prev.bookings.map((b) =>
             b._id === id ? { ...b, status: "cancelled" } : b
           ),
-        };
-        qc.setQueryData(qKey, next);
+        });
       }
       return { prev };
     },
-    onSuccess: () => {
-      toast.success("Booking cancelled.");
-    },
+    onSuccess: () => toast.success("Booking cancelled."),
     onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
       toast.error(errorMessage(err));
     },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: qKey });
-    },
+    onSettled: () => qc.invalidateQueries({ queryKey: qKey }),
   });
 
   const completeMutation = useMutation({
@@ -143,66 +166,54 @@ export default function AdminBookingsPage() {
       await qc.cancelQueries({ queryKey: qKey });
       const prev = qc.getQueryData<AdminResponse>(qKey);
       if (prev) {
-        const next: AdminResponse = {
+        qc.setQueryData<AdminResponse>(qKey, {
           ...prev,
           bookings: prev.bookings.map((b) =>
             b._id === id ? { ...b, status: "completed" } : b
           ),
-        };
-        qc.setQueryData(qKey, next);
+        });
       }
       return { prev };
     },
-    onSuccess: () => {
-      toast.success("Booking marked as completed.");
-    },
+    onSuccess: () => toast.success("Booking marked as completed."),
     onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
       toast.error(errorMessage(err));
     },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: qKey });
-    },
+    onSettled: () => qc.invalidateQueries({ queryKey: qKey }),
   });
 
-  // Mark no-show (optimistic)
   const noShowMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return adminMarkNoShow(id);
-    },
+    mutationFn: async (id: string) => adminMarkNoShow(id),
     onMutate: async (id: string) => {
       await qc.cancelQueries({ queryKey: qKey });
       const prev = qc.getQueryData<AdminResponse>(qKey);
       if (prev) {
-        const next: AdminResponse = {
+        qc.setQueryData<AdminResponse>(qKey, {
           ...prev,
           bookings: prev.bookings.map((b) =>
             b._id === id ? { ...b, status: "no_show" } : b
           ),
-        };
-        qc.setQueryData(qKey, next);
+        });
       }
       return { prev };
     },
-    onSuccess: () => {
-      toast.success("Marked as no-show.");
-    },
+    onSuccess: () => toast.success("Marked as no-show."),
     onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(qKey, ctx.prev);
       toast.error(errorMessage(err));
     },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: qKey });
-    },
+    onSettled: () => qc.invalidateQueries({ queryKey: qKey }),
   });
 
-  // --------- edit modal state ----------
+  /* ------------------------- Edit modal -------------------------- */
+
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editBarberId, setEditBarberId] = useState<string>("");
   const [editServiceName, setEditServiceName] = useState<string>("");
   const [editDurationMin, setEditDurationMin] = useState<number>(30);
-  const [editStartsAtLocal, setEditStartsAtLocal] = useState<string>(""); // yyyy-MM-ddTHH:mm
+  const [editStartsAtLocal, setEditStartsAtLocal] = useState<string>("");
   const [editNotes, setEditNotes] = useState<string>("");
 
   function openEdit(b: AdminBooking) {
@@ -239,9 +250,7 @@ export default function AdminBookingsPage() {
         await qc.invalidateQueries({ queryKey: qKey });
       })().catch(() => {});
     },
-    onError: (err) => {
-      toast.error(errorMessage(err));
-    },
+    onError: (err) => toast.error(errorMessage(err)),
   });
 
   const isActing =
@@ -250,25 +259,28 @@ export default function AdminBookingsPage() {
     noShowMutation.isPending ||
     patchMutation.isPending;
 
-  /* ------------------ CalendarGrid integration ------------------ */
-  const calendarDay =
-    dateFrom && /^\d{4}-\d{2}-\d{2}$/.test(dateFrom)
-      ? dateFrom
-      : new Date().toISOString().slice(0, 10);
+  /* ------------------- Calendar-mapped events --------------------- */
 
-  // ✅ map to CalendarGrid's expected type: { _id, startsAt, endsAt }
-  const calendarBookings = bookings.map((b) => ({
-    _id: b._id,
-    startsAt: b.startsAt,
-    endsAt: b.endsAt,
-  }));
+  const calendarEvents: CalBooking[] = useMemo(
+    () =>
+      bookings
+        .filter((b) => b.startsAt.slice(0, 10) === ymd(viewDate))
+        .map<CalBooking>((b) => ({
+          id: b._id,
+          start: new Date(b.startsAt),
+          end: new Date(b.endsAt),
+          status: b.status,
+          label: b.serviceName,
+        })),
+    [bookings, viewDate]
+  );
+
+  /* ------------------------------ UI ------------------------------ */
 
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-neutral-900">
-          Admin Dashboard
-        </h1>
+        <h1 className="text-2xl font-semibold text-neutral-900">Admin Bookings</h1>
         <button
           onClick={() => refetch()}
           className="rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-medium hover:bg-neutral-800 transition disabled:opacity-60"
@@ -306,20 +318,42 @@ export default function AdminBookingsPage() {
           ))}
         </select>
 
-        <input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
-          className="rounded-lg border border-neutral-300 px-3 py-2"
-          placeholder="From"
-        />
-        <input
-          type="date"
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-          className="rounded-lg border border-neutral-300 px-3 py-2"
-          placeholder="To"
-        />
+        {/* Day controls */}
+        <div className="col-span-2 flex items-center gap-2">
+          <button
+            type="button"
+            className="rounded-lg border border-neutral-300 px-3 py-2 hover:bg-neutral-100"
+            onClick={() => setViewDate((d) => addDays(d, -1))}
+            title="Previous day"
+          >
+            ←
+          </button>
+          <input
+            type="date"
+            value={ymd(viewDate)}
+            onChange={(e) => {
+              const d = e.target.value ? new Date(e.target.value) : new Date();
+              setViewDate(d);
+            }}
+            className="rounded-lg border border-neutral-300 px-3 py-2 w-full"
+          />
+          <button
+            type="button"
+            className="rounded-lg border border-neutral-300 px-3 py-2 hover:bg-neutral-100"
+            onClick={() => setViewDate(new Date())}
+            title="Today"
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            className="rounded-lg border border-neutral-300 px-3 py-2 hover:bg-neutral-100"
+            onClick={() => setViewDate((d) => addDays(d, +1))}
+            title="Next day"
+          >
+            →
+          </button>
+        </div>
 
         <input
           type="text"
@@ -333,9 +367,8 @@ export default function AdminBookingsPage() {
           onClick={() => {
             setStatus("");
             setBarberId("");
-            setDateFrom("");
-            setDateTo("");
             setQ("");
+            setViewDate(new Date());
           }}
           className="rounded-lg border border-neutral-300 px-3 py-2 hover:bg-neutral-100"
         >
@@ -343,35 +376,40 @@ export default function AdminBookingsPage() {
         </button>
       </div>
 
-      {/* Day Calendar */}
+      {/* Calendar (day view) */}
       <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
         <CalendarGrid
-          day={calendarDay}
-          startHour={9}
-          endHour={19}
-          bookings={calendarBookings}
-          onPick={(iso) => {
-            setEditStartsAtLocal(isoToLocalInput(iso));
-            setEditDurationMin(30);
-            setEditServiceName("");
-            setEditBarberId(barberId || (barbers[0]?._id ?? ""));
+          bookings={calendarEvents}
+          startDate={startDate}
+          endDate={endDate}
+          workingHours={workingHours}
+          onEventClick={(ev) => {
+            const b = bookings.find((x) => x._id === ev.id);
+            if (b) openEdit(b);
+          }}
+          onEmptySlotClick={(dt) => {
+            // Pre-fill with the first booking of the day (if available)
+            const seed = bookings.find((b) => b.startsAt.slice(0, 10) === ymd(viewDate));
+            setEditId(seed?._id ?? null);
+            setEditBarberId(seed?.barber?.id ?? "");
+            setEditServiceName(seed?.serviceName ?? "");
+            setEditDurationMin(seed?.durationMin ?? 30);
+            setEditStartsAtLocal(isoToLocalInput(dt.toISOString()));
             setEditNotes("");
-            setEditId(null);
             setEditOpen(true);
           }}
         />
       </div>
 
+      {/* Optional list/table below (kept for parity with earlier UI) */}
       {isLoading && (
         <div className="text-center text-neutral-500 py-12">Loading…</div>
       )}
-
       {isError && (
         <div className="text-center text-rose-600 bg-rose-50 border border-rose-200 rounded-lg py-4">
           Failed to load bookings. Try again later.
         </div>
       )}
-
       {!isLoading && !isError && (
         <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="min-w-full text-sm text-left">
@@ -392,59 +430,35 @@ export default function AdminBookingsPage() {
                 const canComplete = b.status === "booked" || b.status === "rescheduled";
                 const canNoShow = b.status === "booked" || b.status === "rescheduled";
                 return (
-                  <tr
-                    key={b._id}
-                    className="border-t border-neutral-100 hover:bg-neutral-50 transition"
-                  >
-                    <td className="px-4 py-3 text-neutral-800">
-                      {fmtDate(b.startsAt)}
-                    </td>
-
-                    {/* Service + Notes */}
+                  <tr key={b._id} className="border-t border-neutral-100 hover:bg-neutral-50 transition">
+                    <td className="px-4 py-3 text-neutral-800">{fmtDate(b.startsAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
                         <span>{b.serviceName}</span>
                         {b.notes && (
-                          <span
-                            title={b.notes}
-                            className="text-xs text-neutral-500 truncate max-w-[180px]"
-                          >
+                          <span title={b.notes} className="text-xs text-neutral-500 truncate max-w-[180px]">
                             📝 {b.notes}
                           </span>
                         )}
                       </div>
                     </td>
-
-                    <td className="px-4 py-3 font-medium">
-                      {b.barber?.name ?? "—"}
-                    </td>
-
+                    <td className="px-4 py-3 font-medium">{b.barber?.name ?? "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="font-medium">
-                          {b.user?.name ?? "—"}
-                        </span>
-                        <span className="text-neutral-500 text-xs">
-                          {b.user?.email ?? ""}
-                        </span>
+                        <span className="font-medium">{b.user?.name ?? "—"}</span>
+                        <span className="text-neutral-500 text-xs">{b.user?.email ?? ""}</span>
                       </div>
                     </td>
-
                     <td className="px-4 py-3">
                       <StatusBadge status={b.status} />
                     </td>
-
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => openEdit(b)}
                           disabled={!canEdit || isActing}
                           className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-                          title={
-                            canEdit
-                              ? "Edit booking"
-                              : "Only booked appointments can be edited"
-                          }
+                          title={canEdit ? "Edit booking" : "Only booked appointments can be edited"}
                         >
                           Edit
                         </button>
@@ -479,10 +493,7 @@ export default function AdminBookingsPage() {
               })}
               {bookings.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-8 text-center text-neutral-500"
-                  >
+                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
                     No bookings match your filters.
                   </td>
                 </tr>
@@ -499,13 +510,11 @@ export default function AdminBookingsPage() {
             >
               Prev
             </button>
-            <span className="text-neutral-600">
-              Page {curPage} / {totalPages}
-            </span>
+            <span className="text-neutral-600">Page {curPage} / {totalPages}</span>
             <button
               disabled={curPage >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
             >
               Next
             </button>
@@ -514,11 +523,7 @@ export default function AdminBookingsPage() {
       )}
 
       {/* Edit Modal */}
-      <Modal
-        open={editOpen}
-        title="Edit booking"
-        onClose={() => setEditOpen(false)}
-      >
+      <Modal open={editOpen} title="Edit booking" onClose={() => setEditOpen(false)}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -554,13 +559,9 @@ export default function AdminBookingsPage() {
               className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
               required
             >
-              <option value="" disabled>
-                Select barber…
-              </option>
+              <option value="" disabled>Select barber…</option>
               {barbers.map((b) => (
-                <option key={b._id} value={b._id}>
-                  {b.name}
-                </option>
+                <option key={b._id} value={b._id}>{b.name}</option>
               ))}
             </select>
           </label>
@@ -609,7 +610,8 @@ export default function AdminBookingsPage() {
   );
 }
 
-/* ---------------------------- UI Subcomponents ---------------------------- */
+/* ---------------------------- UI helpers ---------------------------- */
+
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     booked: "bg-amber-100 text-amber-800 border-amber-200",
@@ -618,12 +620,9 @@ function StatusBadge({ status }: { status: string }) {
     cancelled: "bg-neutral-100 text-neutral-700 border-neutral-200",
     completed: "bg-green-100 text-green-800 border-green-200",
   };
-  const color =
-    colors[status] || "bg-neutral-100 text-neutral-700 border-neutral-200";
+  const color = colors[status] || "bg-neutral-100 text-neutral-700 border-neutral-200";
   return (
-    <span
-      className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${color}`}
-    >
+    <span className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${color}`}>
       {status.replace("_", " ")}
     </span>
   );

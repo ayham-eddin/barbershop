@@ -1,145 +1,167 @@
-// src/components/CalendarGrid.tsx
-import { useMemo } from 'react';
+import { useMemo, useRef } from "react";
 
-type Slot = { start: string; end: string }; // ISO times (UTC or local-consistent)
-type Booking = {
-  _id: string;
-  startsAt: string; // ISO
-  endsAt: string;   // ISO
-  serviceName?: string;
-  userName?: string;
+/** Calendar event type exposed to consumers */
+export type Booking = {
+  id: string;
+  start: Date;
+  end: Date;
+  label: string;
+  status: string; // e.g., booked | cancelled | completed | no_show | rescheduled
 };
 
-interface CalendarGridProps {
-  /** Day in YYYY-MM-DD (local) used only for heading/context */
-  day: string;
-  /** Inclusive hour (0-23) the grid starts at (e.g. 9) */
-  startHour?: number;
-  /** Exclusive hour (1-24) the grid ends at (e.g. 18) */
-  endHour?: number;
-  /** Available slots to click/pick (optional visual aid) */
-  slots?: Slot[];
-  /** Existing bookings to render (blocks) */
-  bookings?: Booking[];
-  /** Called when user clicks an available slot cell (passes ISO start) */
-  onPick?: (startIso: string) => void;
+export type CalendarGridProps = {
+  /** Events to render within the time window */
+  bookings: Booking[];
+
+  /** Start/end of the visible window (same local day) */
+  startDate: Date;
+  endDate: Date;
+
+  /** Working hours to show in the header (purely cosmetic) */
+  workingHours: { startHour: number; endHour: number };
+
+  /** Clicked on an event */
+  onEventClick?: (ev: Booking) => void;
+
+  /** Clicked on an empty slot -> returns the datetime clicked */
+  onEmptySlotClick?: (dt: Date) => void;
+};
+
+function minutesBetween(a: Date, b: Date): number {
+  return Math.max(0, Math.round((b.getTime() - a.getTime()) / 60000));
 }
 
-function hhmm(hour: number): string {
-  const h = Math.floor(hour);
-  return `${String(h).padStart(2, '0')}:00`;
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
 }
 
-function toMinutes(iso: string): number {
-  const d = new Date(iso);
-  return d.getHours() * 60 + d.getMinutes();
-}
-
+/**
+ * A simple day-view time grid. Each minute equals 1px for clarity.
+ * (So a 10-hour window renders at 600px height.)
+ */
 export default function CalendarGrid({
-  day,
-  startHour = 9,
-  endHour = 18,
-  slots = [],
-  bookings = [],
-  onPick,
+  bookings,
+  startDate,
+  endDate,
+  workingHours,
+  onEventClick,
+  onEmptySlotClick,
 }: CalendarGridProps) {
-  // one row per hour
-  const ticks = useMemo(() => {
+  const totalMinutes = useMemo(
+    () => minutesBetween(startDate, endDate),
+    [startDate, endDate]
+  );
+  const pxPerMin = 1; // 1px / minute
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  const hours = useMemo(() => {
     const out: number[] = [];
-    for (let h = startHour; h < endHour; h += 1) out.push(h);
+    for (let h = workingHours.startHour; h <= workingHours.endHour; h += 1) {
+      out.push(h);
+    }
     return out;
-  }, [startHour, endHour]);
+  }, [workingHours]);
 
-  // helpers for positioning blocks in the grid
-  const dayStartMin = startHour * 60;
-  const totalMin = (endHour - startHour) * 60;
+  const normalizedEvents = useMemo(() => {
+    return bookings.map((ev) => {
+      const topMin = clamp(minutesBetween(startDate, ev.start), 0, totalMinutes);
+      const endMin = clamp(minutesBetween(startDate, ev.end), 0, totalMinutes);
+      const heightMin = Math.max(10, endMin - topMin); // at least 10px visible
+      return {
+        ev,
+        topPx: topMin * pxPerMin,
+        heightPx: heightMin * pxPerMin,
+      };
+    });
+  }, [bookings, startDate, totalMinutes]);
 
-  const pctFromIso = (iso: string) => {
-    const mins = toMinutes(iso) - dayStartMin;
-    return Math.max(0, Math.min(100, (mins / totalMin) * 100));
-  };
-
-  const heightPct = (startIso: string, endIso: string) => {
-    const s = toMinutes(startIso);
-    const e = toMinutes(endIso);
-    const clamped = Math.max(0, Math.min(totalMin, e - s));
-    return Math.max(3, (clamped / totalMin) * 100); // at least 3%
+  const handleEmptyClick = (clientY: number) => {
+    if (!onEmptySlotClick || !gridRef.current) return;
+    const rect = gridRef.current.getBoundingClientRect();
+    const offsetY = clientY - rect.top;
+    const mins = clamp(Math.round(offsetY / pxPerMin), 0, totalMinutes);
+    const dt = new Date(startDate.getTime() + mins * 60000);
+    onEmptySlotClick(dt);
   };
 
   return (
     <div className="w-full">
-      <div className="flex items-end justify-between mb-3">
-        <h3 className="text-lg font-semibold text-neutral-900">
-          {day}
-        </h3>
-        <div className="text-xs text-neutral-500">
-          {hhmm(startHour)} — {hhmm(endHour)}
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-lg font-semibold text-neutral-900">
+          {startDate.toLocaleDateString(undefined, {
+            weekday: "long",
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })}
+        </div>
+        <div className="text-sm text-neutral-600">
+          {String(workingHours.startHour).padStart(2, "0")}:00 —{" "}
+          {String(workingHours.endHour).padStart(2, "0")}:00
         </div>
       </div>
 
-      <div className="relative grid grid-cols-[64px_1fr]">
-        {/* left gutter with hour labels */}
-        <div className="border-r border-neutral-200">
-          {ticks.map((_, i) => (
+      {/* Grid */}
+      <div
+        ref={gridRef}
+        className="relative border border-neutral-200 rounded-xl bg-white shadow-sm overflow-hidden"
+        style={{ height: totalMinutes * pxPerMin }}
+        onClick={(e) => handleEmptyClick(e.clientY)}
+        role="grid"
+        aria-label="Day calendar grid"
+      >
+        {/* Hour lines */}
+        {hours.map((h) => {
+          const minsFromStart = (h - workingHours.startHour) * 60;
+          const y = clamp(minsFromStart * pxPerMin, 0, totalMinutes * pxPerMin);
+          return (
             <div
-              key={i}
-              className="h-16 flex items-start justify-end pr-2 text-[11px] text-neutral-500"
+              key={h}
+              className="absolute left-0 right-0 border-t border-neutral-100"
+              style={{ top: y }}
+              aria-hidden
             >
-              <span className="translate-y-[-6px]">{hhmm(startHour + i)}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* main timeline */}
-        <div className="relative">
-          {/* hour rows */}
-          {ticks.map((_, i) => (
-            <div
-              key={i}
-              className={`h-16 border-t ${i === 0 ? 'border-neutral-200' : 'border-neutral-100'}`}
-            />
-          ))}
-
-          {/* clickable slots (optional) */}
-          {slots.map((s, idx) => {
-            const top = pctFromIso(s.start);
-            const h = heightPct(s.start, s.end);
-            return (
-              <button
-                key={`slot-${idx}`}
-                type="button"
-                style={{ top: `${top}%`, height: `${h}%` }}
-                onClick={() => onPick?.(s.start)}
-                className="absolute left-2 right-2 rounded-md border border-sky-300 bg-sky-50/70 hover:bg-sky-100 text-sky-800 text-[11px] px-2 py-1 text-left shadow-sm"
-                title="Available slot"
-              >
-                {new Date(s.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} –{' '}
-                {new Date(s.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </button>
-            );
-          })}
-
-          {/* existing bookings */}
-          {bookings.map((b) => {
-            const top = pctFromIso(b.startsAt);
-            const h = heightPct(b.startsAt, b.endsAt);
-            return (
-              <div
-                key={b._id}
-                style={{ top: `${top}%`, height: `${h}%` }}
-                className="absolute left-2 right-2 rounded-md border border-amber-300 bg-amber-50 text-amber-900 text-[11px] px-2 py-1 shadow-sm"
-                title={`${b.serviceName ?? 'Booking'} • ${new Date(b.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-              >
-                <div className="font-medium truncate">{b.serviceName ?? 'Booking'}</div>
-                {b.userName && <div className="truncate">{b.userName}</div>}
-                <div className="text-[10px] text-amber-900/80">
-                  {new Date(b.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} –{' '}
-                  {new Date(b.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
+              <div className="absolute -top-3 left-2 text-[11px] text-neutral-500 bg-white px-1">
+                {String(h).padStart(2, "0")}:00
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
+
+        {/* Events */}
+        {normalizedEvents.map(({ ev, topPx, heightPx }) => {
+          // pick base color by status
+          const colorClasses: Record<string, string> = {
+            booked: "bg-amber-50 border-amber-300",
+            rescheduled: "bg-sky-50 border-sky-300",
+            no_show: "bg-rose-50 border-rose-300",
+            cancelled: "bg-neutral-50 border-neutral-300",
+            completed: "bg-green-50 border-green-300",
+          };
+          const cls =
+            colorClasses[ev.status] ??
+            "bg-neutral-50 border-neutral-300";
+
+          return (
+            <button
+              key={ev.id}
+              type="button"
+              className={`absolute left-2 right-2 rounded-lg border shadow-sm text-left px-3 py-2 hover:brightness-95 transition ${cls}`}
+              style={{ top: topPx, height: heightPx }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onEventClick) onEventClick(ev);
+              }}
+            >
+              <div className="text-sm font-medium truncate">{ev.label}</div>
+              <div className="text-[11px] text-neutral-500">
+                {ev.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} —{" "}
+                {ev.end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
