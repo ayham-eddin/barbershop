@@ -42,3 +42,4 @@ export async function updateMe(payload: UpdateMePayload) {
   const { data } = await api.patch<{ user: MeUser }>('/api/auth/me', wire);
   return data.user;
 }
+

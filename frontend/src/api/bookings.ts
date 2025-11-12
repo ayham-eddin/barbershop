@@ -97,6 +97,22 @@ export async function adminUnblockUser(userId: string) {
   return data.user;
 }
 
+export async function adminBlockUser(userId: string, reason?: string) {
+  const { data } = await api.post<{ user: { _id: string; is_online_booking_blocked: boolean; block_reason?: string } }>(
+    `/api/admin/users/${userId}/block`,
+    reason ? { reason } : {},
+  );
+  return data.user;
+}
+
+export async function adminClearWarning(userId: string) {
+  const { data } = await api.post<{ user: { _id: string; warning_count: number } }>(
+    `/api/admin/users/${userId}/clear-warning`,
+    {},
+  );
+  return data.user;
+}
+
 /** Helpers to classify backend rejections by message */
 export function isBlockedError(err: unknown): boolean {
   const ax = err as AxiosError<{ error?: string }>;
