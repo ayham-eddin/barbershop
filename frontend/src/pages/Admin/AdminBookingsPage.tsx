@@ -1,3 +1,4 @@
+// frontend/src/pages/Admin/AdminBookingsPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   useQuery,
@@ -17,6 +18,7 @@ import {
   isoToLocalInput,
 } from "../../utils/datetime";
 import { adminMarkNoShow } from "../../api/bookings";
+import CalendarGrid from "../../components/CalendarGrid";
 
 interface AdminBooking {
   _id: string;
@@ -166,7 +168,6 @@ export default function AdminBookingsPage() {
   // Mark no-show (optimistic)
   const noShowMutation = useMutation({
     mutationFn: async (id: string) => {
-      // returns { booking }
       return adminMarkNoShow(id);
     },
     onMutate: async (id: string) => {
@@ -249,6 +250,19 @@ export default function AdminBookingsPage() {
     noShowMutation.isPending ||
     patchMutation.isPending;
 
+  /* ------------------ CalendarGrid integration ------------------ */
+  const calendarDay =
+    dateFrom && /^\d{4}-\d{2}-\d{2}$/.test(dateFrom)
+      ? dateFrom
+      : new Date().toISOString().slice(0, 10);
+
+  // ✅ map to CalendarGrid's expected type: { _id, startsAt, endsAt }
+  const calendarBookings = bookings.map((b) => ({
+    _id: b._id,
+    startsAt: b.startsAt,
+    endsAt: b.endsAt,
+  }));
+
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center justify-between">
@@ -327,6 +341,25 @@ export default function AdminBookingsPage() {
         >
           Reset
         </button>
+      </div>
+
+      {/* Day Calendar */}
+      <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
+        <CalendarGrid
+          day={calendarDay}
+          startHour={9}
+          endHour={19}
+          bookings={calendarBookings}
+          onPick={(iso) => {
+            setEditStartsAtLocal(isoToLocalInput(iso));
+            setEditDurationMin(30);
+            setEditServiceName("");
+            setEditBarberId(barberId || (barbers[0]?._id ?? ""));
+            setEditNotes("");
+            setEditId(null);
+            setEditOpen(true);
+          }}
+        />
       </div>
 
       {isLoading && (
@@ -472,7 +505,7 @@ export default function AdminBookingsPage() {
             <button
               disabled={curPage >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
+              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
             >
               Next
             </button>
