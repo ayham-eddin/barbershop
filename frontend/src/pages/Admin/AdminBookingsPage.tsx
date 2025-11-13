@@ -1,3 +1,5 @@
+// frontend/src/pages/Admin/AdminBookingsPage.tsx
+
 import { useEffect, useMemo, useState } from "react";
 import {
   useQuery,
@@ -6,9 +8,7 @@ import {
   keepPreviousData,
 } from "@tanstack/react-query";
 import api from "../../api/client";
-import Modal from "../../components/Modal";
 import { patchAdminBooking } from "../../api/adminBookings";
-import TimeField from "../../components/TimeField";
 import toast from "react-hot-toast";
 import { errorMessage } from "../../lib/errors";
 import {
@@ -17,7 +17,11 @@ import {
   isoToLocalInput,
 } from "../../utils/datetime";
 import { adminMarkNoShow } from "../../api/bookings";
-import CalendarGrid, { type Booking as CalBooking } from "../../components/CalendarGrid";
+import CalendarGrid, {
+  type Booking as CalBooking,
+} from "../../components/CalendarGrid";
+import StatusBadge from "../../components/StatusBadge";
+import AdminBookingEditModal from "../../components/admin/AdminBookingEditModal";
 
 /* ----------------------------- Types ----------------------------- */
 
@@ -26,9 +30,20 @@ interface AdminBooking {
   serviceName: string;
   durationMin: number;
   startsAt: string; // ISO
-  endsAt: string;   // ISO
-  status: "booked" | "cancelled" | "completed" | "no_show" | "rescheduled" | string;
-  user?: { id: string; name?: string; email?: string; warning_count?: number };
+  endsAt: string; // ISO
+  status:
+    | "booked"
+    | "cancelled"
+    | "completed"
+    | "no_show"
+    | "rescheduled"
+    | string;
+  user?: {
+    id: string;
+    name?: string;
+    email?: string;
+    warning_count?: number;
+  };
   barber?: { id: string; name?: string };
   notes?: string;
 }
@@ -70,11 +85,23 @@ export default function AdminBookingsPage() {
   const workingHours = { startHour: 9, endHour: 19 };
 
   const startDate = useMemo(
-    () => new Date(`${ymd(viewDate)}T${String(workingHours.startHour).padStart(2, "0")}:00:00`),
+    () =>
+      new Date(
+        `${ymd(viewDate)}T${String(workingHours.startHour).padStart(
+          2,
+          "0"
+        )}:00:00`
+      ),
     [viewDate, workingHours.startHour]
   );
   const endDate = useMemo(
-    () => new Date(`${ymd(viewDate)}T${String(workingHours.endHour).padStart(2, "0")}:00:00`),
+    () =>
+      new Date(
+        `${ymd(viewDate)}T${String(workingHours.endHour).padStart(
+          2,
+          "0"
+        )}:00:00`
+      ),
     [viewDate, workingHours.endHour]
   );
 
@@ -121,7 +148,10 @@ export default function AdminBookingsPage() {
     });
 
   const fmtDate = (iso: string) => formatBerlin(iso);
-  const bookings: AdminBooking[] = useMemo(() => data?.bookings ?? [], [data]);
+  const bookings: AdminBooking[] = useMemo(
+    () => data?.bookings ?? [],
+    [data]
+  );
   const curPage = data?.page ?? page;
   const totalPages = data?.pages ?? 1;
 
@@ -237,7 +267,8 @@ export default function AdminBookingsPage() {
       if (startsAt) patch.startsAt = startsAt;
       if (Number.isFinite(editDurationMin)) patch.durationMin = editDurationMin;
       if (editBarberId) patch.barberId = editBarberId;
-      if (editServiceName.trim()) patch.serviceName = editServiceName.trim();
+      if (editServiceName.trim())
+        patch.serviceName = editServiceName.trim();
       if (editNotes.trim()) patch.notes = editNotes.trim();
 
       return patchAdminBooking(editId, patch);
@@ -280,7 +311,9 @@ export default function AdminBookingsPage() {
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-neutral-900">Admin Bookings</h1>
+        <h1 className="text-2xl font-semibold text-neutral-900">
+          Admin Bookings
+        </h1>
         <button
           onClick={() => refetch()}
           className="rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-medium hover:bg-neutral-800 transition disabled:opacity-60"
@@ -332,7 +365,9 @@ export default function AdminBookingsPage() {
             type="date"
             value={ymd(viewDate)}
             onChange={(e) => {
-              const d = e.target.value ? new Date(e.target.value) : new Date();
+              const d = e.target.value
+                ? new Date(e.target.value)
+                : new Date();
               setViewDate(d);
             }}
             className="rounded-lg border border-neutral-300 px-3 py-2 w-full"
@@ -389,7 +424,9 @@ export default function AdminBookingsPage() {
           }}
           onEmptySlotClick={(dt) => {
             // Pre-fill with the first booking of the day (if available)
-            const seed = bookings.find((b) => b.startsAt.slice(0, 10) === ymd(viewDate));
+            const seed = bookings.find(
+              (b) => b.startsAt.slice(0, 10) === ymd(viewDate)
+            );
             setEditId(seed?._id ?? null);
             setEditBarberId(seed?.barber?.id ?? "");
             setEditServiceName(seed?.serviceName ?? "");
@@ -426,27 +463,44 @@ export default function AdminBookingsPage() {
             <tbody>
               {bookings.map((b) => {
                 const canEdit = b.status === "booked";
-                const canCancel = b.status === "booked" || b.status === "rescheduled";
-                const canComplete = b.status === "booked" || b.status === "rescheduled";
-                const canNoShow = b.status === "booked" || b.status === "rescheduled";
+                const canCancel =
+                  b.status === "booked" || b.status === "rescheduled";
+                const canComplete =
+                  b.status === "booked" || b.status === "rescheduled";
+                const canNoShow =
+                  b.status === "booked" || b.status === "rescheduled";
                 return (
-                  <tr key={b._id} className="border-t border-neutral-100 hover:bg-neutral-50 transition">
-                    <td className="px-4 py-3 text-neutral-800">{fmtDate(b.startsAt)}</td>
+                  <tr
+                    key={b._id}
+                    className="border-t border-neutral-100 hover:bg-neutral-50 transition"
+                  >
+                    <td className="px-4 py-3 text-neutral-800">
+                      {fmtDate(b.startsAt)}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
                         <span>{b.serviceName}</span>
                         {b.notes && (
-                          <span title={b.notes} className="text-xs text-neutral-500 truncate max-w-[180px]">
+                          <span
+                            title={b.notes}
+                            className="text-xs text-neutral-500 truncate max-w-[180px]"
+                          >
                             📝 {b.notes}
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-medium">{b.barber?.name ?? "—"}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {b.barber?.name ?? "—"}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="font-medium">{b.user?.name ?? "—"}</span>
-                        <span className="text-neutral-500 text-xs">{b.user?.email ?? ""}</span>
+                        <span className="font-medium">
+                          {b.user?.name ?? "—"}
+                        </span>
+                        <span className="text-neutral-500 text-xs">
+                          {b.user?.email ?? ""}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -458,7 +512,11 @@ export default function AdminBookingsPage() {
                           onClick={() => openEdit(b)}
                           disabled={!canEdit || isActing}
                           className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-                          title={canEdit ? "Edit booking" : "Only booked appointments can be edited"}
+                          title={
+                            canEdit
+                              ? "Edit booking"
+                              : "Only booked appointments can be edited"
+                          }
                         >
                           Edit
                         </button>
@@ -493,7 +551,10 @@ export default function AdminBookingsPage() {
               })}
               {bookings.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-8 text-center text-neutral-500"
+                  >
                     No bookings match your filters.
                   </td>
                 </tr>
@@ -510,7 +571,9 @@ export default function AdminBookingsPage() {
             >
               Prev
             </button>
-            <span className="text-neutral-600">Page {curPage} / {totalPages}</span>
+            <span className="text-neutral-600">
+              Page {curPage} / {totalPages}
+            </span>
             <button
               disabled={curPage >= totalPages}
               onClick={() => setPage((p) => p + 1)}
@@ -523,107 +586,25 @@ export default function AdminBookingsPage() {
       )}
 
       {/* Edit Modal */}
-      <Modal open={editOpen} title="Edit booking" onClose={() => setEditOpen(false)}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            patchMutation.mutate();
-          }}
-          className="space-y-3"
-        >
-          <TimeField
-            value={editStartsAtLocal}
-            onChange={(iso) => setEditStartsAtLocal(iso)}
-            label="Starts at"
-            required
-          />
-
-          <label className="block text-sm font-medium text-neutral-700">
-            Duration (min)
-            <input
-              type="number"
-              min={5}
-              max={480}
-              value={editDurationMin}
-              onChange={(e) => setEditDurationMin(Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              required
-            />
-          </label>
-
-          <label className="block text-sm font-medium text-neutral-700">
-            Barber
-            <select
-              value={editBarberId}
-              onChange={(e) => setEditBarberId(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              required
-            >
-              <option value="" disabled>Select barber…</option>
-              {barbers.map((b) => (
-                <option key={b._id} value={b._id}>{b.name}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block text-sm font-medium text-neutral-700">
-            Service name
-            <input
-              type="text"
-              value={editServiceName}
-              onChange={(e) => setEditServiceName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              required
-            />
-          </label>
-
-          <label className="block text-sm font-medium text-neutral-700">
-            Notes (optional)
-            <input
-              type="text"
-              value={editNotes}
-              onChange={(e) => setEditNotes(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              placeholder="Optional note for this booking"
-            />
-          </label>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setEditOpen(false)}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={patchMutation.isPending}
-              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-            >
-              {patchMutation.isPending ? "Saving…" : "Save changes"}
-            </button>
-          </div>
-        </form>
-      </Modal>
+      <AdminBookingEditModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        barbers={barbers}
+        startsAtLocal={editStartsAtLocal}
+        onChangeStartsAtLocal={setEditStartsAtLocal}
+        durationMin={editDurationMin}
+        onChangeDurationMin={(value) => setEditDurationMin(value)}
+        barberId={editBarberId}
+        onChangeBarberId={setEditBarberId}
+        serviceName={editServiceName}
+        onChangeServiceName={setEditServiceName}
+        notes={editNotes}
+        onChangeNotes={setEditNotes}
+        onSubmit={() => {
+          patchMutation.mutate();
+        }}
+        isSubmitting={patchMutation.isPending}
+      />
     </div>
-  );
-}
-
-/* ---------------------------- UI helpers ---------------------------- */
-
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    booked: "bg-amber-100 text-amber-800 border-amber-200",
-    rescheduled: "bg-sky-100 text-sky-800 border-sky-200",
-    no_show: "bg-rose-100 text-rose-800 border-rose-200",
-    cancelled: "bg-neutral-100 text-neutral-700 border-neutral-200",
-    completed: "bg-green-100 text-green-800 border-green-200",
-  };
-  const color = colors[status] || "bg-neutral-100 text-neutral-700 border-neutral-200";
-  return (
-    <span className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${color}`}>
-      {status.replace("_", " ")}
-    </span>
   );
 }
