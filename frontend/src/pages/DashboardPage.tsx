@@ -259,26 +259,35 @@ function BookingCard({
   const barberLabel = booking.barber?.name ?? booking.barber?.id ?? booking.barberId;
 
   return (
-    <article className="rounded-2xl bg-white border border-neutral-200 p-5 shadow-sm flex flex-col gap-2">
+    <article className="rounded-2xl bg-white border border-neutral-200 p-5 shadow-sm flex flex-col gap-3">
+      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-medium text-neutral-900">
-          {booking.serviceName} <span className="text-neutral-400">•</span>{' '}
-          {booking.durationMin} min
+          {booking.serviceName}{' '}
+          <span className="text-neutral-400">•</span> {booking.durationMin} min
         </h3>
         <StatusBadge status={booking.status} />
       </div>
 
-      <p className="text-sm text-neutral-700">{formatBerlin(booking.startsAt)}</p>
+      {/* Date & barber */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 text-sm">
+        <p className="text-neutral-700">{formatBerlin(booking.startsAt)}</p>
+        <p className="text-xs text-neutral-500">Barber: {barberLabel}</p>
+      </div>
 
+      {/* Notes */}
       {booking.notes && (
         <p className="text-sm text-neutral-600 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2">
           <span className="font-medium text-neutral-700">Note:</span> {booking.notes}
         </p>
       )}
 
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-neutral-500">Barber: {barberLabel}</p>
-        <div className="flex items-center gap-2">
+      {/* Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+        {/* spacer on desktop – we already show barber above */}
+        <div className="hidden sm:block" />
+
+        <div className="flex flex-wrap justify-end gap-2">
           {canReschedule && (
             <button
               onClick={onReschedule}
