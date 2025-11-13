@@ -1,3 +1,4 @@
+// frontend/src/pages/Admin/AdminBarbersPage.tsx
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -21,6 +22,15 @@ type Barber = {
 };
 
 type AdminListResponse = { barbers: Barber[] };
+
+// Default schedule: Mon–Fri 09:00–17:00
+const DEFAULT_WORKING_HOURS: WorkingHour[] = [
+  { day: 1, start: '09:00', end: '17:00' },
+  { day: 2, start: '09:00', end: '17:00' },
+  { day: 3, start: '09:00', end: '17:00' },
+  { day: 4, start: '09:00', end: '17:00' },
+  { day: 5, start: '09:00', end: '17:00' },
+];
 
 export default function AdminBarbersPage() {
   const qc = useQueryClient();
@@ -95,6 +105,7 @@ export default function AdminBarbersPage() {
       name: string;
       specialties: string[];
       active: boolean;
+      workingHours: WorkingHour[];
     }) => {
       const res = await api.post('/api/admin/barbers', payload);
       return res.data as { barber: Barber };
@@ -148,6 +159,8 @@ export default function AdminBarbersPage() {
       name: name.trim(),
       specialties: parseSpecialties(specialtiesInput),
       active,
+      // 👇 this makes new barbers immediately bookable
+      workingHours: DEFAULT_WORKING_HOURS,
     });
   };
 
@@ -261,9 +274,7 @@ export default function AdminBarbersPage() {
                     {b.name}
                   </td>
                   <td className="px-4 py-3 text-neutral-600">
-                    {b.specialties.length
-                      ? b.specialties.join(', ')
-                      : '—'}
+                    {b.specialties.length ? b.specialties.join(', ') : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <span
