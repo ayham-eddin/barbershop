@@ -176,17 +176,17 @@ export default function BookingPage() {
 
   return (
     <section className="mt-8 space-y-4">
-      {/* Page heading (outside grid for nicer stacking on mobile) */}
+      {/* Page heading */}
       <header className="px-1 md:px-0">
         <h1 className="text-2xl font-semibold text-neutral-900">Book an appointment</h1>
         <p className="text-sm text-neutral-600 mt-1">
-          Choose your barber, service, and time. You’ll confirm the booking on the right.
+          Choose your barber, service, and time. You’ll see a summary before confirming.
         </p>
       </header>
 
       <div className="mt-4 grid gap-5 md:gap-8 md:grid-cols-[minmax(0,1fr)_320px] items-start">
         {/* LEFT (form / controls) */}
-        <section className="order-2 md:order-1 rounded-2xl bg-white border border-neutral-200 shadow-sm overflow-hidden">
+        <section className="rounded-2xl bg-white border border-neutral-200 shadow-sm overflow-hidden">
           <div className="bg-neutral-900 text-white px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
             <div>
               <h2 className="text-base md:text-lg font-semibold tracking-tight">
@@ -417,7 +417,7 @@ export default function BookingPage() {
         </section>
 
         {/* RIGHT (summary / CTA) */}
-        <aside className="order-1 md:order-2 md:sticky md:top-20 h-max rounded-2xl bg-white border border-neutral-200 shadow-sm p-4 md:p-6">
+        <aside className="md:sticky md:top-20 h-max rounded-2xl bg-white border border-neutral-200 shadow-sm p-4 md:p-6">
           <h3 className="text-base font-semibold text-neutral-900">
             Summary
           </h3>
