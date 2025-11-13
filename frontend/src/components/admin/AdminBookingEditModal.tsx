@@ -1,5 +1,3 @@
-// frontend/src/components/admin/AdminBookingEditModal.tsx
-
 import Modal from "../Modal";
 import TimeField from "../TimeField";
 

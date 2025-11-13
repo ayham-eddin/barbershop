@@ -120,6 +120,11 @@ export default function AdminBookingsPage() {
     })().catch(() => setBarbers([]));
   }, []);
 
+  const selectedBarber = useMemo(
+    () => barbers.find((b) => b._id === barberId) ?? null,
+    [barbers, barberId]
+  );
+
   // query string
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -306,6 +311,13 @@ export default function AdminBookingsPage() {
     [bookings, viewDate]
   );
 
+  const today = new Date();
+  const isToday = ymd(viewDate) === ymd(today);
+  const nowForCalendar = isToday ? today : undefined;
+  const calendarSubtitle = selectedBarber
+    ? `Barber: ${selectedBarber.name}`
+    : "All barbers";
+
   /* ------------------------------ UI ------------------------------ */
 
   return (
@@ -418,17 +430,24 @@ export default function AdminBookingsPage() {
           startDate={startDate}
           endDate={endDate}
           workingHours={workingHours}
+          now={nowForCalendar}
+          subtitle={calendarSubtitle}
           onEventClick={(ev) => {
             const b = bookings.find((x) => x._id === ev.id);
             if (b) openEdit(b);
           }}
           onEmptySlotClick={(dt) => {
-            // Pre-fill with the first booking of the day (if available)
-            const seed = bookings.find(
+            const sameDayBookings = bookings.filter(
               (b) => b.startsAt.slice(0, 10) === ymd(viewDate)
             );
+
+            const seed =
+              sameDayBookings.find(
+                (b) => barberId && b.barber?.id === barberId
+              ) ?? sameDayBookings[0];
+
             setEditId(seed?._id ?? null);
-            setEditBarberId(seed?.barber?.id ?? "");
+            setEditBarberId(barberId || seed?.barber?.id || "");
             setEditServiceName(seed?.serviceName ?? "");
             setEditDurationMin(seed?.durationMin ?? 30);
             setEditStartsAtLocal(isoToLocalInput(dt.toISOString()));

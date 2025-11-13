@@ -20,6 +20,12 @@ export type CalendarGridProps = {
   /** Working hours to show in the header (purely cosmetic) */
   workingHours: { startHour: number; endHour: number };
 
+  /** Optional "current time" for highlighting (only used if same day & in range) */
+  now?: Date;
+
+  /** Optional subtitle shown in the header (e.g. "All barbers" / "Barber: Max") */
+  subtitle?: string;
+
   /** Clicked on an event */
   onEventClick?: (ev: Booking) => void;
 
@@ -35,6 +41,14 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
+function isSameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 /**
  * A simple day-view time grid. Each minute equals 1px for clarity.
  * (So a 10-hour window renders at 600px height.)
@@ -44,6 +58,8 @@ export default function CalendarGrid({
   startDate,
   endDate,
   workingHours,
+  now,
+  subtitle,
   onEventClick,
   onEmptySlotClick,
 }: CalendarGridProps) {
@@ -64,7 +80,11 @@ export default function CalendarGrid({
 
   const normalizedEvents = useMemo(() => {
     return bookings.map((ev) => {
-      const topMin = clamp(minutesBetween(startDate, ev.start), 0, totalMinutes);
+      const topMin = clamp(
+        minutesBetween(startDate, ev.start),
+        0,
+        totalMinutes
+      );
       const endMin = clamp(minutesBetween(startDate, ev.end), 0, totalMinutes);
       const heightMin = Math.max(10, endMin - topMin); // at least 10px visible
       return {
@@ -74,6 +94,15 @@ export default function CalendarGrid({
       };
     });
   }, [bookings, startDate, totalMinutes]);
+
+  const nowLineTop = useMemo(() => {
+    if (!now) return null;
+    if (!isSameDay(now, startDate)) return null;
+    if (now < startDate || now > endDate) return null;
+
+    const mins = clamp(minutesBetween(startDate, now), 0, totalMinutes);
+    return mins * pxPerMin;
+  }, [now, startDate, endDate, totalMinutes]);
 
   const handleEmptyClick = (clientY: number) => {
     if (!onEmptySlotClick || !gridRef.current) return;
@@ -96,9 +125,16 @@ export default function CalendarGrid({
             day: "numeric",
           })}
         </div>
-        <div className="text-sm text-neutral-600">
-          {String(workingHours.startHour).padStart(2, "0")}:00 —{" "}
-          {String(workingHours.endHour).padStart(2, "0")}:00
+        <div className="text-right text-sm text-neutral-600">
+          <div>
+            {String(workingHours.startHour).padStart(2, "0")}:00 —{" "}
+            {String(workingHours.endHour).padStart(2, "0")}:00
+          </div>
+          {subtitle && (
+            <div className="mt-0.5 text-xs text-neutral-500">
+              {subtitle}
+            </div>
+          )}
         </div>
       </div>
 
@@ -129,6 +165,17 @@ export default function CalendarGrid({
           );
         })}
 
+        {/* Current time line */}
+        {nowLineTop !== null && (
+          <div
+            className="absolute left-0 right-0 border-t border-rose-400"
+            style={{ top: nowLineTop }}
+            aria-hidden
+          >
+            <div className="absolute -top-1 left-1 w-2 h-2 rounded-full bg-rose-500" />
+          </div>
+        )}
+
         {/* Events */}
         {normalizedEvents.map(({ ev, topPx, heightPx }) => {
           // pick base color by status
@@ -140,8 +187,7 @@ export default function CalendarGrid({
             completed: "bg-green-50 border-green-300",
           };
           const cls =
-            colorClasses[ev.status] ??
-            "bg-neutral-50 border-neutral-300";
+            colorClasses[ev.status] ?? "bg-neutral-50 border-neutral-300";
 
           return (
             <button
@@ -156,8 +202,15 @@ export default function CalendarGrid({
             >
               <div className="text-sm font-medium truncate">{ev.label}</div>
               <div className="text-[11px] text-neutral-500">
-                {ev.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} —{" "}
-                {ev.end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {ev.start.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                —{" "}
+                {ev.end.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </div>
             </button>
           );

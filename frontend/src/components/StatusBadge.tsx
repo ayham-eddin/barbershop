@@ -1,5 +1,3 @@
-// frontend/src/components/StatusBadge.tsx
-
 type StatusBadgeProps = {
   status: string;
 };
