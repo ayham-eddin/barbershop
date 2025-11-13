@@ -1,8 +1,15 @@
-// frontend/src/api/client.ts
 import axios, { AxiosError } from 'axios';
 
+const envBase = import.meta.env.VITE_API_URL as string | undefined;
+
+const isRemoteBase =
+  envBase &&
+  !/^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(envBase);
+
+const baseURL = isRemoteBase ? envBase.trim().replace(/\/+$/, '') : '';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000',
+  baseURL,
   withCredentials: false,
 });
 
@@ -41,7 +48,6 @@ api.interceptors.response.use(
         // ignore
       }
 
-      // Redirect to login page if not already there
       if (
         typeof window !== 'undefined' &&
         !window.location.pathname.includes('/login')
