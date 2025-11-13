@@ -22,6 +22,8 @@ import CalendarGrid, {
 } from "../../components/CalendarGrid";
 import StatusBadge from "../../components/StatusBadge";
 import AdminBookingEditModal from "../../components/admin/AdminBookingEditModal";
+import AdminCalendarSkeleton from "../../components/admin/AdminCalendarSkeleton";
+import AdminTableSkeleton from "../../components/admin/AdminTableSkeleton";
 
 /* ----------------------------- Types ----------------------------- */
 
@@ -425,47 +427,49 @@ export default function AdminBookingsPage() {
 
       {/* Calendar (day view) */}
       <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
-        <CalendarGrid
-          bookings={calendarEvents}
-          startDate={startDate}
-          endDate={endDate}
-          workingHours={workingHours}
-          now={nowForCalendar}
-          subtitle={calendarSubtitle}
-          onEventClick={(ev) => {
-            const b = bookings.find((x) => x._id === ev.id);
-            if (b) openEdit(b);
-          }}
-          onEmptySlotClick={(dt) => {
-            const sameDayBookings = bookings.filter(
-              (b) => b.startsAt.slice(0, 10) === ymd(viewDate)
-            );
+        {isLoading ? (
+          <AdminCalendarSkeleton />
+        ) : (
+          <CalendarGrid
+            bookings={calendarEvents}
+            startDate={startDate}
+            endDate={endDate}
+            workingHours={workingHours}
+            now={nowForCalendar}
+            subtitle={calendarSubtitle}
+            onEventClick={(ev) => {
+              const b = bookings.find((x) => x._id === ev.id);
+              if (b) openEdit(b);
+            }}
+            onEmptySlotClick={(dt) => {
+              const sameDayBookings = bookings.filter(
+                (b) => b.startsAt.slice(0, 10) === ymd(viewDate)
+              );
 
-            const seed =
-              sameDayBookings.find(
-                (b) => barberId && b.barber?.id === barberId
-              ) ?? sameDayBookings[0];
+              const seed =
+                sameDayBookings.find(
+                  (b) => barberId && b.barber?.id === barberId
+                ) ?? sameDayBookings[0];
 
-            setEditId(seed?._id ?? null);
-            setEditBarberId(barberId || seed?.barber?.id || "");
-            setEditServiceName(seed?.serviceName ?? "");
-            setEditDurationMin(seed?.durationMin ?? 30);
-            setEditStartsAtLocal(isoToLocalInput(dt.toISOString()));
-            setEditNotes("");
-            setEditOpen(true);
-          }}
-        />
+              setEditId(seed?._id ?? null);
+              setEditBarberId(barberId || seed?.barber?.id || "");
+              setEditServiceName(seed?.serviceName ?? "");
+              setEditDurationMin(seed?.durationMin ?? 30);
+              setEditStartsAtLocal(isoToLocalInput(dt.toISOString()));
+              setEditNotes("");
+              setEditOpen(true);
+            }}
+          />
+        )}
       </div>
 
       {/* Optional list/table below (kept for parity with earlier UI) */}
-      {isLoading && (
-        <div className="text-center text-neutral-500 py-12">Loading…</div>
-      )}
       {isError && (
         <div className="text-center text-rose-600 bg-rose-50 border border-rose-200 rounded-lg py-4">
           Failed to load bookings. Try again later.
         </div>
       )}
+      {isLoading && !isError && <AdminTableSkeleton />}
       {!isLoading && !isError && (
         <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="min-w-full text-sm text-left">

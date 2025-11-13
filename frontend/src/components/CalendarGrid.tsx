@@ -141,7 +141,7 @@ export default function CalendarGrid({
       {/* Grid */}
       <div
         ref={gridRef}
-        className="relative border border-neutral-200 rounded-xl bg-white shadow-sm overflow-hidden"
+        className="relative border border-neutral-200 rounded-xl bg-white shadow-sm overflow-y-auto max-h-[70vh]"
         style={{ height: totalMinutes * pxPerMin }}
         onClick={(e) => handleEmptyClick(e.clientY)}
         role="grid"
