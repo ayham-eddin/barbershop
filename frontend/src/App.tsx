@@ -1,4 +1,3 @@
-// src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
@@ -9,13 +8,14 @@ import AdminUsersPage from './pages/Admin/AdminUsersPage';
 import BookingPage from './pages/BookingPage';
 import AdminServicesPage from './pages/Admin/AdminServicesPage';
 import AdminTimeOffPage from './pages/Admin/AdminTimeOffPage';
+import AdminBarbersPage from './pages/Admin/AdminBarbersPage';
 import ProfilePage from './pages/ProfilePage';
 import { useState, useEffect } from 'react';
 
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [role, setRole] = useState<'user' | 'admin' | null>(
-    (localStorage.getItem('role') as 'user' | 'admin' | null) || null
+    (localStorage.getItem('role') as 'user' | 'admin' | null) || null,
   );
 
   useEffect(() => {
@@ -64,18 +64,23 @@ export default function App() {
               path="/admin/bookings"
               element={token && role === 'admin' ? <AdminBookingsPage /> : <Navigate to="/login" />}
             />
-            <Route 
-              path="/admin/users" 
-              element={token && role === 'admin' ? <AdminUsersPage /> : <Navigate to="/login" />}
+            <Route
+              path="/admin/services"
+              element={token && role === 'admin' ? <AdminServicesPage /> : <Navigate to="/login" />}
             />
             <Route
-              path="/admin/services" 
-              element={token && role === 'admin' ? <AdminServicesPage /> : <Navigate to="/login" />}
+              path="/admin/barbers"
+              element={token && role === 'admin' ? <AdminBarbersPage /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/admin/users"
+              element={token && role === 'admin' ? <AdminUsersPage /> : <Navigate to="/login" />}
             />
             <Route
               path="/admin/timeoff"
               element={token && role === 'admin' ? <AdminTimeOffPage /> : <Navigate to="/login" />}
             />
+
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
