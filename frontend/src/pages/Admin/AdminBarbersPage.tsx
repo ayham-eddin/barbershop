@@ -7,8 +7,8 @@ import Modal from '../../components/Modal';
 
 type WorkingHour = {
   day: number; // 0-6
-  start: string;
-  end: string;
+  start: string; // "HH:MM"
+  end: string;   // "HH:MM"
 };
 
 type Barber = {
@@ -23,6 +23,14 @@ type Barber = {
 
 type AdminListResponse = { barbers: Barber[] };
 
+type AffectedBooking = {
+  id: string;
+  startsAt: string;
+  durationMin: number;
+  userName: string | null;
+  userEmail: string | null;
+};
+
 // Default schedule: Mon–Fri 09:00–17:00
 const DEFAULT_WORKING_HOURS: WorkingHour[] = [
   { day: 1, start: '09:00', end: '17:00' },
@@ -31,6 +39,8 @@ const DEFAULT_WORKING_HOURS: WorkingHour[] = [
   { day: 4, start: '09:00', end: '17:00' },
   { day: 5, start: '09:00', end: '17:00' },
 ];
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function AdminBarbersPage() {
   const qc = useQueryClient();
@@ -58,12 +68,19 @@ export default function AdminBarbersPage() {
   const [editName, setEditName] = useState('');
   const [editSpecialtiesInput, setEditSpecialtiesInput] = useState('');
   const [editActive, setEditActive] = useState(true);
+  const [editWorkingHours, setEditWorkingHours] = useState<WorkingHour[]>(DEFAULT_WORKING_HOURS);
+
+  // ---- affected bookings (after hours change) ----
+  const [lastAffected, setLastAffected] = useState<AffectedBooking[] | null>(null);
 
   function openEdit(b: Barber) {
     setEditId(b._id);
     setEditName(b.name);
     setEditSpecialtiesInput(b.specialties.join(', '));
     setEditActive(b.active);
+    setEditWorkingHours(
+      b.workingHours && b.workingHours.length > 0 ? b.workingHours : DEFAULT_WORKING_HOURS,
+    );
     setEditOpen(true);
   }
 
@@ -98,6 +115,29 @@ export default function AdminBarbersPage() {
       .map((s) => s.trim())
       .filter(Boolean);
 
+  const formatHoursSummary = (wh: WorkingHour[]): string => {
+    if (!wh.length) return 'Hours not set';
+    const days = wh
+      .slice()
+      .sort((a, b) => a.day - b.day)
+      .map((h) => `${DAY_LABELS[h.day]} ${h.start}–${h.end}`);
+    return days.join(', ');
+  };
+
+  const handleHourChange = (day: number, field: 'start' | 'end', value: string) => {
+    setEditWorkingHours((prev) => {
+      const existing = prev.find((h) => h.day === day);
+      if (existing) {
+        return prev.map((h) =>
+          h.day === day ? { ...h, [field]: value } : h,
+        );
+      }
+      const defaultStart = field === 'start' ? value : '09:00';
+      const defaultEnd = field === 'end' ? value : '17:00';
+      return [...prev, { day, start: defaultStart, end: defaultEnd }];
+    });
+  };
+
   /* ─────────────── mutations ─────────────── */
 
   const createMut = useMutation({
@@ -123,17 +163,25 @@ export default function AdminBarbersPage() {
   const updateMut = useMutation({
     mutationFn: async (payload: {
       id: string;
-      patch: Partial<Pick<Barber, 'name' | 'specialties' | 'active'>>;
+      patch: Partial<Pick<Barber, 'name' | 'specialties' | 'active' | 'workingHours'>>;
     }) => {
-      const res = await api.patch(
-        `/api/admin/barbers/${payload.id}`,
-        payload.patch,
-      );
-      return res.data as { barber: Barber };
+      const res = await api.patch(`/api/admin/barbers/${payload.id}`, payload.patch);
+      return res.data as { barber: Barber; affectedBookings?: AffectedBooking[] };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['adminBarbers'] }).catch(() => {});
       toast.success('Barber updated.');
+
+      const affected = data.affectedBookings ?? [];
+      if (affected.length > 0) {
+        setLastAffected(affected);
+        toast(
+          `${affected.length} future booking${affected.length > 1 ? 's' : ''} now fall outside the new working hours. Check the list below to contact customers.`,
+          { duration: 7000 },
+        );
+      } else {
+        setLastAffected(null);
+      }
     },
     onError: (err) => toast.error(errorMessage(err)),
   });
@@ -159,7 +207,7 @@ export default function AdminBarbersPage() {
       name: name.trim(),
       specialties: parseSpecialties(specialtiesInput),
       active,
-      // 👇 this makes new barbers immediately bookable
+      // new barbers are immediately bookable with default hours
       workingHours: DEFAULT_WORKING_HOURS,
     });
   };
@@ -175,6 +223,7 @@ export default function AdminBarbersPage() {
           name: editName.trim(),
           specialties: parseSpecialties(editSpecialtiesInput),
           active: editActive,
+          workingHours: editWorkingHours,
         },
       },
       {
@@ -253,6 +302,39 @@ export default function AdminBarbersPage() {
         </div>
       )}
 
+      {/* Affected bookings info */}
+      {lastAffected && lastAffected.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm space-y-2">
+          <div className="font-semibold text-amber-800">
+            {lastAffected.length} future booking
+            {lastAffected.length > 1 ? 's are' : ' is'} now outside the updated working hours.
+          </div>
+          <p className="text-amber-800">
+            Please contact these customers to reschedule or cancel:
+          </p>
+          <ul className="space-y-1">
+            {lastAffected.map((b) => (
+              <li
+                key={b.id}
+                className="flex flex-wrap items-center justify-between gap-2 border-t border-amber-100 pt-1 first:border-t-0 first:pt-0"
+              >
+                <span className="text-amber-900 text-xs sm:text-sm">
+                  {new Date(b.startsAt).toLocaleString('de-DE', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                  })}{' '}
+                  · {b.durationMin} min
+                </span>
+                <span className="text-amber-900 text-xs sm:text-sm">
+                  {b.userName ?? 'Unknown'}{' '}
+                  {b.userEmail ? `(${b.userEmail})` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!isLoading && !isError && (
         <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="min-w-full text-sm text-left">
@@ -260,6 +342,7 @@ export default function AdminBarbersPage() {
               <tr>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Specialties</th>
+                <th className="px-4 py-3">Working hours</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
@@ -275,6 +358,9 @@ export default function AdminBarbersPage() {
                   </td>
                   <td className="px-4 py-3 text-neutral-600">
                     {b.specialties.length ? b.specialties.join(', ') : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-neutral-600 text-xs sm:text-sm">
+                    {formatHoursSummary(b.workingHours)}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -321,7 +407,7 @@ export default function AdminBarbersPage() {
               {barbers.length === 0 && (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-4 py-8 text-center text-neutral-500"
                   >
                     No barbers yet.
@@ -335,7 +421,7 @@ export default function AdminBarbersPage() {
 
       {/* Edit modal */}
       <Modal open={editOpen} title="Edit barber" onClose={closeEdit}>
-        <form onSubmit={onSubmitEdit} className="space-y-3">
+        <form onSubmit={onSubmitEdit} className="space-y-4">
           <label className="block text-sm font-medium text-neutral-700">
             Name
             <input
@@ -366,6 +452,50 @@ export default function AdminBarbersPage() {
             />
             Active
           </label>
+
+          {/* Working hours editor */}
+          <div className="border-t border-neutral-200 pt-3">
+            <p className="text-sm font-medium text-neutral-800 mb-2">
+              Working hours
+            </p>
+            <p className="text-xs text-neutral-500 mb-3">
+              Adjust the weekly schedule. Times are in HH:MM (24h).
+            </p>
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {DAY_LABELS.map((label, day) => {
+                const block =
+                  editWorkingHours.find((h) => h.day === day) ?? {
+                    day,
+                    start: '09:00',
+                    end: '17:00',
+                  };
+                return (
+                  <div
+                    key={day}
+                    className="grid grid-cols-[60px,1fr,1fr] items-center gap-2 text-xs sm:text-sm"
+                  >
+                    <span className="text-neutral-700">{label}</span>
+                    <input
+                      type="time"
+                      value={block.start}
+                      onChange={(e) =>
+                        handleHourChange(day, 'start', e.target.value)
+                      }
+                      className="rounded-lg border border-neutral-300 px-2 py-1"
+                    />
+                    <input
+                      type="time"
+                      value={block.end}
+                      onChange={(e) =>
+                        handleHourChange(day, 'end', e.target.value)
+                      }
+                      className="rounded-lg border border-neutral-300 px-2 py-1"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <button

@@ -8,7 +8,7 @@ import { requireAdmin } from '@src/middleware/requireAdmin';
 import { validateBody, validateParams } from '@src/middleware/validate';
 
 import { Barber, type BarberDoc, type WorkingHour } from '@src/models/Barber';
-import { Appointment } from '@src/models/Appointment';
+import { Appointment, type AppointmentDoc } from '@src/models/Appointment';
 
 const r = Router();
 
@@ -26,6 +26,7 @@ const workingBlock = z.object({
   end: z.string().regex(/^\d{2}:\d{2}$/, 'end must be HH:MM'),
 });
 
+// services are just Service IDs for admin
 const serviceIds = z.array(objectId).default([]);
 
 /**
@@ -53,7 +54,7 @@ function normalizeError(e: unknown): string {
   if (typeof e === 'string') return e;
   if (e && typeof e === 'object' && 'message' in e) {
     const m = (e as { message?: string }).message;
-    return m ?? def; // use nullish coalescing for ESLint rule
+    return m ?? def;
   }
   return def;
 }
@@ -104,7 +105,7 @@ r.post(
   },
 );
 
-// PATCH /api/admin/barbers/:id  (update barber)
+// PATCH /api/admin/barbers/:id  (update barber + detect affected bookings)
 r.patch(
   '/:id',
   requireAuth,
@@ -116,9 +117,7 @@ r.patch(
     const updates = req.body as z.infer<typeof updateSchema>;
     const _id = new Types.ObjectId(id);
 
-    const toSet: Partial<BarberDoc> & {
-      services?: Types.ObjectId[];
-    } = {};
+    const toSet: Partial<BarberDoc> & { services?: Types.ObjectId[] } = {};
 
     if (typeof updates.name === 'string') {
       toSet.name = updates.name.trim();
@@ -136,6 +135,7 @@ r.patch(
       toSet.active = updates.active;
     }
 
+    // Save updated barber first
     const updated = await Barber.findByIdAndUpdate(
       _id,
       { $set: toSet },
@@ -149,7 +149,77 @@ r.patch(
       return res.status(404).json({ error: 'Barber not found' });
     }
 
-    return res.json({ barber: updated });
+    /* ------------------------------------------------------------------
+       If working hours were updated, detect affected future bookings
+    ------------------------------------------------------------------ */
+    type PopulatedAppointment = AppointmentDoc & {
+      userId?: { name?: string; email?: string } | Types.ObjectId;
+    };
+
+    let affectedBookings: {
+      id: string;
+      startsAt: Date;
+      durationMin: number;
+      userName: string | null;
+      userEmail: string | null;
+    }[] = [];
+
+    if (Array.isArray(updates.workingHours)) {
+      const newHours = updates.workingHours as WorkingHour[];
+
+      // Get all future booked/rescheduled appointments for this barber
+      const futureBookingsRaw = await Appointment.find({
+        barberId: _id,
+        status: { $in: ['booked', 'rescheduled'] },
+        startsAt: { $gte: new Date() },
+      })
+        .populate({ path: 'userId', select: 'name email' })
+        .lean()
+        .exec();
+
+      // TS: go through unknown before casting to our helper type
+      const futureBookings = futureBookingsRaw as unknown as PopulatedAppointment[];
+
+      const isInsideHours = (dt: Date): boolean => {
+        const day = dt.getDay(); // 0..6
+        const wh = newHours.find((h) => h.day === day);
+        if (!wh) return false;
+
+        const [sh, sm] = wh.start.split(':').map(Number);
+        const [eh, em] = wh.end.split(':').map(Number);
+
+        const startMinutes = sh * 60 + sm;
+        const endMinutes = eh * 60 + em;
+        const dtMinutes = dt.getHours() * 60 + dt.getMinutes();
+
+        return dtMinutes >= startMinutes && dtMinutes < endMinutes;
+      };
+
+      const invalid = futureBookings.filter((b) => {
+        const start = new Date(b.startsAt);
+        return !isInsideHours(start);
+      });
+
+      affectedBookings = invalid.map((b) => {
+        const user =
+          typeof b.userId === 'object' && b.userId !== null && 'email' in b.userId
+            ? (b.userId as { name?: string; email?: string })
+            : undefined;
+
+        return {
+          id: b._id.toString(),
+          startsAt: b.startsAt,
+          durationMin: b.durationMin,
+          userName: user?.name ?? null,
+          userEmail: user?.email ?? null,
+        };
+      });
+    }
+
+    return res.json({
+      barber: updated,
+      affectedBookings,
+    });
   },
 );
 
