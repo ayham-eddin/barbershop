@@ -72,6 +72,10 @@ export default function AdminBarbersPage() {
 
   // ---- affected bookings (after hours change) ----
   const [lastAffected, setLastAffected] = useState<AffectedBooking[] | null>(null);
+  const [lastAffectedBarber, setLastAffectedBarber] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   function openEdit(b: Barber) {
     setEditId(b._id);
@@ -138,6 +142,30 @@ export default function AdminBarbersPage() {
     });
   };
 
+  const affectedEmails = useMemo(() => {
+    if (!lastAffected) return [];
+    const set = new Set<string>();
+    for (const b of lastAffected) {
+      if (b.userEmail) set.add(b.userEmail);
+    }
+    return Array.from(set);
+  }, [lastAffected]);
+
+  const handleCopyEmails = async () => {
+    if (!affectedEmails.length) return;
+    const text = affectedEmails.join(', ');
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        toast.success('Email list copied to clipboard.');
+      } else {
+        throw new Error('Clipboard not available');
+      }
+    } catch {
+      toast.error('Could not copy emails. Please copy them manually.');
+    }
+  };
+
   /* ─────────────── mutations ─────────────── */
 
   const createMut = useMutation({
@@ -168,25 +196,39 @@ export default function AdminBarbersPage() {
       const res = await api.patch(`/api/admin/barbers/${payload.id}`, payload.patch);
       return res.data as { barber: Barber; affectedBookings?: AffectedBooking[] };
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       qc.invalidateQueries({ queryKey: ['adminBarbers'] }).catch(() => {});
       toast.success('Barber updated.');
 
       const affected = data.affectedBookings ?? [];
       if (affected.length > 0) {
         setLastAffected(affected);
+
+        const barber =
+          barbers.find((b) => b._id === variables.id) ?? null;
+
+        setLastAffectedBarber(
+          barber
+            ? { id: barber._id, name: barber.name }
+            : { id: variables.id, name: editName || 'This barber' },
+        );
+
         toast(
-          `${affected.length} future booking${affected.length > 1 ? 's' : ''} now fall outside the new working hours. Check the list below to contact customers.`,
+          `${affected.length} future booking${affected.length > 1 ? 's' : ''} now fall outside the new working hours.`,
           { duration: 7000 },
         );
       } else {
         setLastAffected(null);
+        setLastAffectedBarber(null);
       }
+
+      // Close modal if it was open
+      closeEdit();
     },
     onError: (err) => toast.error(errorMessage(err)),
   });
 
-  const deleteMut = useMutation({
+    const deleteMut = useMutation({
     mutationFn: async (id: string) => {
       const res = await api.delete(`/api/admin/barbers/${id}`);
       return res.data as { deleted: Barber };
@@ -195,8 +237,29 @@ export default function AdminBarbersPage() {
       qc.invalidateQueries({ queryKey: ['adminBarbers'] }).catch(() => {});
       toast.success('Barber deleted.');
     },
-    onError: (err) => toast.error(errorMessage(err)),
+    onError: (err) => {
+      const fallback =
+        'Cannot delete this barber. They still might have future bookings.';
+
+      if (err && typeof err === 'object') {
+        const ax = err as {
+          response?: { data?: { error?: string; message?: string } };
+          message?: string;
+        };
+
+        const msg =
+          ax.response?.data?.error ??
+          ax.response?.data?.message ??
+          ax.message ??
+          fallback;
+
+        toast.error(msg);
+      } else {
+        toast.error(fallback);
+      }
+    },
   });
+
 
   /* ─────────────── submit handlers ─────────────── */
 
@@ -216,22 +279,15 @@ export default function AdminBarbersPage() {
     e.preventDefault();
     if (!editId) return;
     if (!editName.trim()) return toast.error('Name is required.');
-    updateMut.mutate(
-      {
-        id: editId,
-        patch: {
-          name: editName.trim(),
-          specialties: parseSpecialties(editSpecialtiesInput),
-          active: editActive,
-          workingHours: editWorkingHours,
-        },
+    updateMut.mutate({
+      id: editId,
+      patch: {
+        name: editName.trim(),
+        specialties: parseSpecialties(editSpecialtiesInput),
+        active: editActive,
+        workingHours: editWorkingHours,
       },
-      {
-        onSuccess: () => {
-          closeEdit();
-        },
-      },
-    );
+    });
   };
 
   /* ─────────────── UI ─────────────── */
@@ -302,36 +358,93 @@ export default function AdminBarbersPage() {
         </div>
       )}
 
-      {/* Affected bookings info */}
+      {/* Affected bookings info (polished UX) */}
       {lastAffected && lastAffected.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm space-y-2">
-          <div className="font-semibold text-amber-800">
-            {lastAffected.length} future booking
-            {lastAffected.length > 1 ? 's are' : ' is'} now outside the updated working hours.
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="flex items-center gap-2 font-semibold text-amber-900">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-[11px]">
+                  !
+                </span>
+                Schedule changed for{' '}
+                <span className="underline underline-offset-2">
+                  {lastAffectedBarber?.name ?? 'this barber'}
+                </span>
+              </p>
+              <p className="mt-1 text-xs sm:text-[13px] text-amber-800">
+                {lastAffected.length} future booking
+                {lastAffected.length > 1 ? 's are' : ' is'} now outside the updated
+                working hours. Please contact these customers to reschedule or cancel.
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss affected bookings"
+              className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-amber-200 text-amber-700 hover:bg-amber-100 text-xs"
+              onClick={() => {
+                setLastAffected(null);
+                setLastAffectedBarber(null);
+              }}
+            >
+              ×
+            </button>
           </div>
-          <p className="text-amber-800">
-            Please contact these customers to reschedule or cancel:
-          </p>
-          <ul className="space-y-1">
-            {lastAffected.map((b) => (
-              <li
-                key={b.id}
-                className="flex flex-wrap items-center justify-between gap-2 border-t border-amber-100 pt-1 first:border-t-0 first:pt-0"
+
+          {affectedEmails.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-[13px]">
+              <span className="text-amber-900">
+                Emails:{' '}
+                <span className="font-medium">
+                  {affectedEmails.join(', ')}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyEmails}
+                className="rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-200"
               >
-                <span className="text-amber-900 text-xs sm:text-sm">
-                  {new Date(b.startsAt).toLocaleString('de-DE', {
-                    dateStyle: 'short',
-                    timeStyle: 'short',
-                  })}{' '}
-                  · {b.durationMin} min
-                </span>
-                <span className="text-amber-900 text-xs sm:text-sm">
-                  {b.userName ?? 'Unknown'}{' '}
-                  {b.userEmail ? `(${b.userEmail})` : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
+                Copy email list
+              </button>
+            </div>
+          )}
+
+          <div className="max-h-40 overflow-y-auto rounded-xl border border-amber-100 bg-amber-50/70">
+            <table className="min-w-full text-xs sm:text-[13px]">
+              <thead className="bg-amber-100/80 sticky top-0">
+                <tr className="text-amber-900">
+                  <th className="px-3 py-1 text-left font-semibold">Date & time</th>
+                  <th className="px-3 py-1 text-left font-semibold">Duration</th>
+                  <th className="px-3 py-1 text-left font-semibold">Customer</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lastAffected.map((b) => (
+                  <tr key={b.id} className="border-t border-amber-100">
+                    <td className="px-3 py-1 text-amber-900">
+                      {new Date(b.startsAt).toLocaleString('de-DE', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      })}
+                    </td>
+                    <td className="px-3 py-1 text-amber-900">
+                      {b.durationMin} min
+                    </td>
+                    <td className="px-3 py-1 text-amber-900">
+                      <div className="flex flex-col">
+                        <span>{b.userName ?? 'Unknown'}</span>
+                        {b.userEmail && (
+                          <span className="text-[11px] text-amber-800">
+                            {b.userEmail}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
