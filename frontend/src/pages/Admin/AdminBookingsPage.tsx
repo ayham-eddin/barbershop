@@ -99,8 +99,9 @@ export default function AdminBookingsPage() {
   const [barberId, setBarberId] = useState<string>("");
   const [q, setQ] = useState<string>("");
 
-  // Show / hide day calendar
+  // Show / hide day calendar + list range filters
   const [showCalendar, setShowCalendar] = useState<boolean>(true);
+  const [showRangeFilters, setShowRangeFilters] = useState<boolean>(false);
 
   // ---------- Sync from URL on first render ----------
   useEffect(() => {
@@ -382,6 +383,13 @@ export default function AdminBookingsPage() {
             {showCalendar ? "Hide day view" : "Show day view"}
           </button>
           <button
+            type="button"
+            onClick={() => setShowRangeFilters((v) => !v)}
+            className="rounded-lg border border-neutral-300 px-3 py-2 text-xs sm:text-sm font-medium text-neutral-800 hover:bg-neutral-100 transition"
+          >
+            {showRangeFilters ? "Hide list range" : "Show list range"}
+          </button>
+          <button
             onClick={() => refetch()}
             className="rounded-lg bg-neutral-900 text-white px-4 py-2 text-xs sm:text-sm font-medium hover:bg-neutral-800 transition disabled:opacity-60"
             disabled={isFetching}
@@ -481,53 +489,55 @@ export default function AdminBookingsPage() {
       </div>
 
       {/* List range controls */}
-      <div className="grid gap-3 grid-cols-1 md:grid-cols-3 bg-white border border-neutral-200 rounded-xl p-4 text-xs text-neutral-700">
-        <div className="flex flex-col gap-1">
-          <span className="font-medium">From (list range)</span>
-          <input
-            type="date"
-            value={ymd(listFrom)}
-            onChange={(e) => {
-              const d = e.target.value
-                ? new Date(e.target.value)
-                : new Date();
-              // Ensure from <= to
-              if (d > listTo) {
-                setListFrom(d);
-                setListTo(d);
-              } else {
-                setListFrom(d);
-              }
-            }}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-          />
+      {showRangeFilters && (
+        <div className="grid gap-3 grid-cols-1 md:grid-cols-3 bg-white border border-neutral-200 rounded-xl p-4 text-xs text-neutral-700">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">From (list range)</span>
+            <input
+              type="date"
+              value={ymd(listFrom)}
+              onChange={(e) => {
+                const d = e.target.value
+                  ? new Date(e.target.value)
+                  : new Date();
+                // Ensure from <= to
+                if (d > listTo) {
+                  setListFrom(d);
+                  setListTo(d);
+                } else {
+                  setListFrom(d);
+                }
+              }}
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">To (list range)</span>
+            <input
+              type="date"
+              value={ymd(listTo)}
+              onChange={(e) => {
+                const d = e.target.value
+                  ? new Date(e.target.value)
+                  : new Date();
+                // Ensure from <= to
+                if (d < listFrom) {
+                  setListFrom(d);
+                  setListTo(d);
+                } else {
+                  setListTo(d);
+                }
+              }}
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <p className="self-center md:text-left text-center text-[11px] text-neutral-500">
+            This range controls which bookings appear in the table below (and in
+            the optional day view, as long as the selected day falls within the
+            range).
+          </p>
         </div>
-        <div className="flex flex-col gap-1">
-          <span className="font-medium">To (list range)</span>
-          <input
-            type="date"
-            value={ymd(listTo)}
-            onChange={(e) => {
-              const d = e.target.value
-                ? new Date(e.target.value)
-                : new Date();
-              // Ensure from <= to
-              if (d < listFrom) {
-                setListFrom(d);
-                setListTo(d);
-              } else {
-                setListTo(d);
-              }
-            }}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-          />
-        </div>
-        <p className="self-center md:text-left text-center text-[11px] text-neutral-500">
-          This range controls which bookings appear in the table below (and in
-          the optional day view, as long as the selected day falls within the
-          range).
-        </p>
-      </div>
+      )}
 
       {/* Table + pagination */}
       {isError && (
@@ -652,29 +662,31 @@ export default function AdminBookingsPage() {
           </table>
 
           {/* Pagination */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-between sm:items-center px-4 py-3 border-t border-neutral-200 text-sm bg-neutral-50">
-            <button
-              disabled={curPage <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-            >
-              Prev
-            </button>
-            <span className="text-neutral-600 text-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center px-4 py-3 border-t border-neutral-200 text-sm bg-neutral-50">
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                disabled={curPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="flex-1 sm:flex-none rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
+              >
+                Prev
+              </button>
+              <button
+                disabled={curPage >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="flex-1 sm:flex-none rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+            <span className="text-neutral-600 text-center sm:text-right">
               Page {curPage} / {totalPages}
             </span>
-            <button
-              disabled={curPage >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-            >
-              Next
-            </button>
           </div>
         </div>
       )}
 
-      {/* Optional day view calendar at the bottom */}
+      {/* Optional day view calendar */}
       {showCalendar && (
         <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
           {isLoading ? (
