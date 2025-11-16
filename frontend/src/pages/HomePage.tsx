@@ -87,6 +87,20 @@ export default function HomePage() {
             >
               Meet Barbers
             </a>
+
+            {/* New: quick links to About / Contact */}
+            <Link
+              to="/about"
+              className="inline-flex items-center rounded-lg border border-neutral-700 px-5 py-2.5 text-white hover:bg-neutral-800 transition"
+            >
+              About
+            </Link>
+            <Link
+              to="/contact"
+              className="inline-flex items-center rounded-lg border border-neutral-700 px-5 py-2.5 text-white hover:bg-neutral-800 transition"
+            >
+              Contact
+            </Link>
           </div>
         </div>
       </section>

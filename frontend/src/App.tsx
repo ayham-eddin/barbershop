@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -10,6 +10,8 @@ import AdminServicesPage from './pages/Admin/AdminServicesPage';
 import AdminTimeOffPage from './pages/Admin/AdminTimeOffPage';
 import AdminBarbersPage from './pages/Admin/AdminBarbersPage';
 import ProfilePage from './pages/ProfilePage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
 import { useState, useEffect } from 'react';
 
 export default function App() {
@@ -59,6 +61,14 @@ export default function App() {
               path="/profile"
               element={token ? <ProfilePage /> : <Navigate to="/login" />}
             />
+            <Route 
+              path="/about" 
+              element={<AboutPage />} 
+            />
+            <Route 
+              path="/contact" 
+              element={<ContactPage />} 
+            />
 
             <Route
               path="/admin/bookings"
@@ -86,7 +96,25 @@ export default function App() {
         </main>
 
         <footer className="border-t border-neutral-200 mt-12 py-6 text-center text-sm text-neutral-500">
-          © {new Date().getFullYear()} BarberBooking. Crafted with ✂️ and care.
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex gap-4">
+              <Link
+                to="/about"
+                className="hover:text-neutral-800 underline underline-offset-4 decoration-neutral-300"
+              >
+                About
+              </Link>
+              <Link
+                to="/contact"
+                className="hover:text-neutral-800 underline underline-offset-4 decoration-neutral-300"
+              >
+                Contact
+              </Link>
+            </div>
+            <p>
+              © {new Date().getFullYear()} BarberBooking. Crafted with ✂️ and care.
+            </p>
+          </div>
         </footer>
       </div>
     </Router>

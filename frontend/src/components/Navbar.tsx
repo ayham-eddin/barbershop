@@ -14,51 +14,56 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
     'text-sm font-medium text-gray-300 hover:text-white transition-colors';
   const navLinkActive = 'text-sm font-semibold text-white';
 
+  const makeNavClass = ({ isActive }: { isActive: boolean }) =>
+    isActive ? navLinkActive : navLinkBase;
+
   const renderLinks = (onClick?: () => void) => (
     <>
+      {/* Public main links */}
+      <NavLink to="/" className={makeNavClass} onClick={onClick}>
+        Home
+      </NavLink>
+      <NavLink to="/about" className={makeNavClass} onClick={onClick}>
+        About
+      </NavLink>
+      <NavLink to="/contact" className={makeNavClass} onClick={onClick}>
+        Contact
+      </NavLink>
+
+      {/* Admin section */}
       {token && role === 'admin' && (
         <>
           <NavLink
             to="/admin/bookings"
-            className={({ isActive }) =>
-              isActive ? navLinkActive : navLinkBase
-            }
+            className={makeNavClass}
             onClick={onClick}
           >
             Bookings
           </NavLink>
           <NavLink
             to="/admin/services"
-            className={({ isActive }) =>
-              isActive ? navLinkActive : navLinkBase
-            }
+            className={makeNavClass}
             onClick={onClick}
           >
             Services
           </NavLink>
           <NavLink
             to="/admin/barbers"
-            className={({ isActive }) =>
-              isActive ? navLinkActive : navLinkBase
-            }
+            className={makeNavClass}
             onClick={onClick}
           >
             Barbers
           </NavLink>
           <NavLink
             to="/admin/users"
-            className={({ isActive }) =>
-              isActive ? navLinkActive : navLinkBase
-            }
+            className={makeNavClass}
             onClick={onClick}
           >
             Users
           </NavLink>
           <NavLink
             to="/admin/timeoff"
-            className={({ isActive }) =>
-              isActive ? navLinkActive : navLinkBase
-            }
+            className={makeNavClass}
             onClick={onClick}
           >
             Time off
@@ -66,24 +71,22 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
         </>
       )}
 
+      {/* User shortcuts */}
       {token && role === 'user' && (
         <NavLink
           to="/dashboard"
-          className={({ isActive }) =>
-            isActive ? navLinkActive : navLinkBase
-          }
+          className={makeNavClass}
           onClick={onClick}
         >
           My Bookings
         </NavLink>
       )}
 
+      {/* Profile / Auth */}
       {token && (
         <NavLink
           to="/profile"
-          className={({ isActive }) =>
-            isActive ? navLinkActive : navLinkBase
-          }
+          className={makeNavClass}
           onClick={onClick}
         >
           Profile
@@ -93,9 +96,7 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
       {!token && (
         <NavLink
           to="/login"
-          className={({ isActive }) =>
-            isActive ? navLinkActive : navLinkBase
-          }
+          className={makeNavClass}
           onClick={onClick}
         >
           Login
