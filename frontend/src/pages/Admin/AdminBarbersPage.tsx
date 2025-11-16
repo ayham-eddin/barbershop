@@ -48,6 +48,8 @@ const DEFAULT_WORKING_HOURS: WorkingHour[] = [
   { day: 5, start: '09:00', end: '17:00' },
 ];
 
+const DAY_ORDER: number[] = [1, 2, 3, 4, 5, 6, 0];
+
 function weekdayLabel(day: number): string {
   const map: Record<number, string> = {
     0: 'Sun',
@@ -61,9 +63,11 @@ function weekdayLabel(day: number): string {
   return map[day] ?? String(day);
 }
 
+// still kept in case you want the comma-separated string somewhere else
 function formatWorkingHours(blocks: WorkingHour[]): string {
   if (!blocks.length) return 'Not set';
   return blocks
+    .slice()
     .sort((a, b) => a.day - b.day)
     .map((b) => `${weekdayLabel(b.day)} ${b.start}–${b.end}`)
     .join(', ');
@@ -95,15 +99,18 @@ export default function AdminBarbersPage() {
   const [editName, setEditName] = useState('');
   const [editSpecialtiesInput, setEditSpecialtiesInput] = useState('');
   const [editActive, setEditActive] = useState(true);
+  const [editWorkingHours, setEditWorkingHours] = useState<WorkingHour[]>([]);
 
   // ---- delete conflict box state ----
-  const [deleteConflict, setDeleteConflict] = useState<DeleteConflictState | null>(null);
+  const [deleteConflict, setDeleteConflict] =
+    useState<DeleteConflictState | null>(null);
 
   function openEdit(b: Barber) {
     setEditId(b._id);
     setEditName(b.name);
     setEditSpecialtiesInput(b.specialties.join(', '));
     setEditActive(b.active);
+    setEditWorkingHours(b.workingHours ?? []);
     setEditOpen(true);
   }
 
@@ -144,6 +151,56 @@ export default function AdminBarbersPage() {
 
   const isoToYmd = (iso: string) => iso.slice(0, 10);
 
+  // working-hour helpers for edit modal
+  function setDayEnabled(day: number, enabled: boolean) {
+    setEditWorkingHours((prev) => {
+      const exists = prev.find((w) => w.day === day);
+      if (enabled) {
+        if (exists) return prev;
+        return [
+          ...prev,
+          {
+            day: day as WorkingHour['day'],
+            start: '09:00',
+            end: '17:00',
+          },
+        ];
+      }
+      return prev.filter((w) => w.day !== day);
+    });
+  }
+
+  function updateDayField(day: number, field: 'start' | 'end', value: string) {
+    setEditWorkingHours((prev) => {
+      const exists = prev.find((w) => w.day === day);
+      if (!exists) {
+        // auto-enable day if user starts typing a time
+        const base: WorkingHour = {
+          day: day as WorkingHour['day'],
+          start: field === 'start' ? value : '09:00',
+          end: field === 'end' ? value : '17:00',
+        };
+        return [...prev, base];
+      }
+      return prev.map((w) =>
+        w.day === day ? { ...w, [field]: value } : w,
+      );
+    });
+  }
+
+  function getDayConfig(day: number): {
+    enabled: boolean;
+    start: string;
+    end: string;
+  } {
+    const block = editWorkingHours.find((w) => w.day === day);
+    return {
+      enabled: !!block,
+      start: block?.start ?? '09:00',
+      end: block?.end ?? '17:00',
+    };
+  }
+
   /* ─────────────── mutations ─────────────── */
 
   const createMut = useMutation({
@@ -169,7 +226,9 @@ export default function AdminBarbersPage() {
   const updateMut = useMutation({
     mutationFn: async (payload: {
       id: string;
-      patch: Partial<Pick<Barber, 'name' | 'specialties' | 'active'>>;
+      patch: Partial<
+        Pick<Barber, 'name' | 'specialties' | 'active' | 'workingHours'>
+      >;
     }) => {
       const res = await api.patch(
         `/api/admin/barbers/${payload.id}`,
@@ -262,6 +321,17 @@ export default function AdminBarbersPage() {
     e.preventDefault();
     if (!editId) return;
     if (!editName.trim()) return toast.error('Name is required.');
+
+    // normalize working hours (drop disabled days, sort)
+    const normalizedWH: WorkingHour[] = editWorkingHours
+      .filter((w) => w.start && w.end)
+      .map((w) => ({
+        day: w.day,
+        start: w.start.slice(0, 5),
+        end: w.end.slice(0, 5),
+      }))
+      .sort((a, b) => a.day - b.day);
+
     updateMut.mutate(
       {
         id: editId,
@@ -269,6 +339,7 @@ export default function AdminBarbersPage() {
           name: editName.trim(),
           specialties: parseSpecialties(editSpecialtiesInput),
           active: editActive,
+          workingHours: normalizedWH,
         },
       },
       {
@@ -372,10 +443,27 @@ export default function AdminBarbersPage() {
                     <td className="px-4 py-3 text-neutral-600">
                       {b.specialties.length ? b.specialties.join(', ') : '—'}
                     </td>
-                    <td className="px-4 py-3 text-neutral-600">
-                      {b.workingHours && b.workingHours.length
-                        ? formatWorkingHours(b.workingHours)
-                        : 'Not set'}
+                    <td className="px-4 py-3 text-neutral-600 align-top">
+                      {b.workingHours && b.workingHours.length ? (
+                        <div className="flex flex-col gap-0.5 text-xs sm:text-sm">
+                          {b.workingHours
+                            .slice()
+                            .sort((a, b2) => a.day - b2.day)
+                            .map((wh) => (
+                              <span
+                                key={`${b._id}-${wh.day}-${wh.start}-${wh.end}`}
+                                className="whitespace-nowrap"
+                              >
+                                <span className="font-medium">
+                                  {weekdayLabel(wh.day)}
+                                </span>{' '}
+                                {wh.start}–{wh.end}
+                              </span>
+                            ))}
+                        </div>
+                      ) : (
+                        'Not set'
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -442,9 +530,10 @@ export default function AdminBarbersPage() {
                     Cannot delete {deleteConflict.barberName}
                   </h2>
                   <p className="mt-1 text-xs text-amber-800">
-                    This barber still has {deleteConflict.bookings.length} future booking
-                    {deleteConflict.bookings.length === 1 ? '' : 's'}. Set them inactive,
-                    or update / cancel the bookings below.
+                    This barber still has {deleteConflict.bookings.length}{' '}
+                    future booking
+                    {deleteConflict.bookings.length === 1 ? '' : 's'}. Set them
+                    inactive, or update / cancel the bookings below.
                   </p>
                 </div>
                 <button
@@ -491,7 +580,9 @@ export default function AdminBarbersPage() {
                           <a
                             href={`/admin/bookings?barberId=${encodeURIComponent(
                               deleteConflict.barberId,
-                            )}&date=${encodeURIComponent(isoToYmd(b.startsAt))}`}
+                            )}&date=${encodeURIComponent(
+                              isoToYmd(b.startsAt),
+                            )}`}
                             className="inline-flex items-center rounded-full border border-amber-300 px-3 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-50"
                           >
                             Open in bookings
@@ -551,6 +642,62 @@ export default function AdminBarbersPage() {
             />
             Active
           </label>
+
+          {/* Working hours editor */}
+          <div className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-sm font-medium text-neutral-800">
+                Working hours
+              </p>
+              <p className="text-[11px] text-neutral-500">
+                Uncheck a day to mark it as closed.
+              </p>
+            </div>
+            <div className="mt-2 space-y-1.5">
+              {DAY_ORDER.map((day) => {
+                const cfg = getDayConfig(day);
+                return (
+                  <div
+                    key={day}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <label className="flex items-center gap-2 min-w-[80px]">
+                      <input
+                        type="checkbox"
+                        className="rounded border-neutral-300"
+                        checked={cfg.enabled}
+                        onChange={(e) =>
+                          setDayEnabled(day, e.target.checked)
+                        }
+                      />
+                      <span className="w-10 text-neutral-800">
+                        {weekdayLabel(day)}
+                      </span>
+                    </label>
+                    <input
+                      type="time"
+                      value={cfg.start}
+                      onChange={(e) =>
+                        updateDayField(day, 'start', e.target.value)
+                      }
+                      disabled={!cfg.enabled}
+                      className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-xs disabled:bg-neutral-100"
+                    />
+                    <span className="text-neutral-500 text-xs">–</span>
+                    <input
+                      type="time"
+                      value={cfg.end}
+                      onChange={(e) =>
+                        updateDayField(day, 'end', e.target.value)
+                      }
+                      disabled={!cfg.enabled}
+                      className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-xs disabled:bg-neutral-100"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <button
