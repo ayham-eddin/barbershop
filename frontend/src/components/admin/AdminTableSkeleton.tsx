@@ -1,5 +1,3 @@
-// frontend/src/components/admin/AdminTableSkeleton.tsx
-
 export default function AdminTableSkeleton() {
   return (
     <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm animate-pulse">

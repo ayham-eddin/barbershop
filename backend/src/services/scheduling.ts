@@ -1,4 +1,5 @@
-import dayjs from 'dayjs';
+// src/services/scheduling.ts
+import dayjs, { Dayjs } from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { Types } from 'mongoose';
@@ -21,12 +22,76 @@ function toMinutes(hhmm: string): number {
 }
 
 /**
+ * Compute Easter Sunday (Gregorian) for a given year.
+ * Used to derive several German moveable holidays.
+ */
+function computeEasterSunday(year: number): Dayjs {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31); // 3 = March, 4 = April
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+
+  // Create a UTC date for Easter Sunday
+  return dayjs.utc(new Date(Date.UTC(year, month - 1, day)));
+}
+
+/**
+ * NRW public holidays (date-based) for a given day.
+ * We treat the given Dayjs as a date (year-month-day).
+ */
+function isNrwPublicHoliday(date: Dayjs): boolean {
+  const year = date.year();
+
+  const easter = computeEasterSunday(year);
+  const goodFriday = easter.subtract(2, 'day');
+  const easterMonday = easter.add(1, 'day');
+  const ascension = easter.add(39, 'day');
+  const whitMonday = easter.add(50, 'day');
+  const corpusChristi = easter.add(60, 'day');
+
+  // Fixed-date holidays (NRW)
+  const fixed = [
+    dayjs.utc(new Date(Date.UTC(year, 0, 1))),   // 1 Jan – New Year
+    dayjs.utc(new Date(Date.UTC(year, 4, 1))),   // 1 May – Labour Day
+    dayjs.utc(new Date(Date.UTC(year, 9, 3))),   // 3 Oct – German Unity Day
+    dayjs.utc(new Date(Date.UTC(year, 10, 1))),  // 1 Nov – All Saints' Day (NRW)
+    dayjs.utc(new Date(Date.UTC(year, 11, 25))), // 25 Dec – Christmas
+    dayjs.utc(new Date(Date.UTC(year, 11, 26))), // 26 Dec – 2nd Christmas Day
+  ];
+
+  if (fixed.some((d) => date.isSame(d, 'day'))) return true;
+
+  const moveable = [
+    goodFriday,
+    easterMonday,
+    ascension,
+    whitMonday,
+    corpusChristi,
+  ];
+
+  if (moveable.some((d) => date.isSame(d, 'day'))) return true;
+
+  return false;
+}
+
+/**
  * Calculates available slots for a barber on a given UTC date.
  * - dateISO should be in "YYYY-MM-DD" format
  * - duration is in minutes
  * - stepMin defines granularity between slots (default 15)
  * - excludes overlapping appointments & time-offs
  * - respects BookingBufferMin only for slots on the current UTC day
+ * - returns no slots on weekends and NRW public holidays
  */
 export async function getAvailableSlots(
   barberId: string,
@@ -39,8 +104,21 @@ export async function getAvailableSlots(
   const barber = await Barber.findById(new Types.ObjectId(barberId)).exec();
   if (!barber) return [];
 
+  const date = dayjs.utc(dateISO);
+
   // weekday index (0 = Sunday ... 6 = Saturday)
-  const dayIdx = dayjs.utc(dateISO).day();
+  const dayIdx = date.day();
+
+  // Hide weekends
+  if (dayIdx === 0 || dayIdx === 6) {
+    return [];
+  }
+
+  // Hide NRW public holidays
+  if (isNrwPublicHoliday(date)) {
+    return [];
+  }
+
   const wh = barber.workingHours.find((w) => w.day === dayIdx);
   if (!wh) return [];
 
@@ -49,7 +127,7 @@ export async function getAvailableSlots(
   if (endM <= startM) return [];
 
   // Full UTC day range
-  const dayStart = dayjs.utc(dateISO).startOf('day');
+  const dayStart = date.startOf('day');
   const rangeStart = dayStart.add(startM, 'minute');
   const rangeEnd = dayStart.add(endM, 'minute');
 
@@ -58,10 +136,10 @@ export async function getAvailableSlots(
   const isSameDay = dayStart.isSame(nowUtc, 'day');
   const minStartUtc = nowUtc.add(ENV.BookingBufferMin, 'minute');
 
-  // Find overlapping appointments
+  // Find overlapping appointments (booked + rescheduled)
   const appointments = await Appointment.find({
     barberId: barber._id,
-    status: { $in: ['booked', 'rescheduled'] }, // ✅ treat rescheduled as active
+    status: { $in: ['booked', 'rescheduled'] },
     startsAt: { $lt: rangeEnd.toDate() },
     endsAt: { $gt: rangeStart.toDate() },
   })
@@ -98,7 +176,7 @@ export async function getAvailableSlots(
     const q = p.add(duration, 'minute');
 
     const overlaps = blocks.some((b) => p.isBefore(b.e) && q.isAfter(b.s));
-    // Apply buffer only for today; future/past days ignore it
+    // Apply buffer only for today; future days ignore it
     const respectsBuffer = !isSameDay || !p.isBefore(minStartUtc);
 
     if (!overlaps && respectsBuffer) {

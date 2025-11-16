@@ -17,9 +17,18 @@ type Barber = { _id: string; name: string };
 function todayYMD(): string {
   const d = new Date();
   const tz = 'Europe/Berlin';
-  const yyyy = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric' }).format(d);
-  const mm = new Intl.DateTimeFormat('en-CA', { timeZone: tz, month: '2-digit' }).format(d);
-  const dd = new Intl.DateTimeFormat('en-CA', { timeZone: tz, day: '2-digit' }).format(d);
+  const yyyy = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+  }).format(d);
+  const mm = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    month: '2-digit',
+  }).format(d);
+  const dd = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    day: '2-digit',
+  }).format(d);
   return `${yyyy}-${mm}-${dd}`;
 }
 
@@ -32,12 +41,105 @@ function within7DaysBerlin(iso: string): boolean {
   return diffMs >= 0 && diffMs <= 7 * 24 * 60 * 60 * 1000;
 }
 
+/* ------------------------------------------------------------------
+   Closed days: weekends + NRW public holidays
+   (kept in sync with backend scheduling rules)
+------------------------------------------------------------------- */
+
+function pad2(n: number): string {
+  return n.toString().padStart(2, '0');
+}
+
+// Meeus/Jones/Butcher algorithm – returns Easter Sunday (UTC)
+function easterSundayUtc(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31); // 3=March, 4=April
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function ymdFromDateUtc(d: Date): string {
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(
+    d.getUTCDate(),
+  )}`;
+}
+
+// Returns a set of YYYY-MM-DD strings for NRW public holidays in a year
+function nrwHolidaySet(year: number): Set<string> {
+  const dates: string[] = [];
+
+  const add = (month: number, day: number) => {
+    dates.push(`${year}-${pad2(month)}-${pad2(day)}`);
+  };
+
+  // Fixed-date holidays
+  add(1, 1); // Neujahrstag
+  add(5, 1); // Tag der Arbeit
+  add(10, 3); // Tag der Deutschen Einheit
+  add(11, 1); // Allerheiligen
+  add(12, 25); // Erster Weihnachtstag
+  add(12, 26); // Zweiter Weihnachtstag
+
+  // Movable feasts based on Easter
+  const easter = easterSundayUtc(year);
+  const mk = (offsetDays: number) => {
+    const d = new Date(easter);
+    d.setUTCDate(d.getUTCDate() + offsetDays);
+    return ymdFromDateUtc(d);
+  };
+
+  dates.push(mk(-2)); // Karfreitag
+  dates.push(mk(1)); // Ostermontag
+  dates.push(mk(39)); // Christi Himmelfahrt
+  dates.push(mk(50)); // Pfingstmontag
+  dates.push(mk(60)); // Fronleichnam
+
+  return new Set(dates);
+}
+
+// Check if a YYYY-MM-DD date is weekend or NRW holiday
+function isClosedDateYmd(ymd: string): boolean {
+  if (!ymd) return false;
+  const [yStr, mStr, dStr] = ymd.split('-');
+  const year = Number(yStr);
+  const month = Number(mStr);
+  const day = Number(dStr);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
+    return false;
+  }
+
+  const jsDate = new Date(year, month - 1, day);
+  const dow = jsDate.getDay(); // 0=Sun..6=Sat
+  const isWeekend = dow === 0 || dow === 6;
+
+  const holidays = nrwHolidaySet(year);
+  const isHoliday = holidays.has(ymd);
+
+  return isWeekend || isHoliday;
+}
+
 export default function BookingPage() {
   const navigate = useNavigate();
 
   // 🚫 Prevent admin from using booking UI
   useEffect(() => {
-    const role = (localStorage.getItem('role') as 'user' | 'admin' | null) || null;
+    const role =
+      (localStorage.getItem('role') as 'user' | 'admin' | null) || null;
     if (role === 'admin') {
       navigate('/admin/bookings', { replace: true });
     }
@@ -74,9 +176,17 @@ export default function BookingPage() {
   >(null);
 
   // Check if the user already has an active booking within 7 days
-  const [myActiveWithin7d, setMyActiveWithin7d] = useState<Booking | null>(null);
+  const [myActiveWithin7d, setMyActiveWithin7d] = useState<Booking | null>(
+    null,
+  );
 
   const isBootstrapping = !barbers.length || !services.length;
+
+  // Is the currently chosen date a closed day?
+  const isClosedDateSelected = useMemo(
+    () => isClosedDateYmd(date),
+    [date],
+  );
 
   // Load barbers + services + my bookings (for UX gating)
   useEffect(() => {
@@ -108,6 +218,19 @@ export default function BookingPage() {
 
   async function handleCheck() {
     if (!barberId || !date || !durationMin) return;
+
+    // Block weekends & NRW holidays on the client too
+    if (isClosedDateYmd(date)) {
+      setSlots([]);
+      setFeedback({
+        kind: 'err',
+        text:
+          'We are closed on weekends and public holidays in NRW. ' +
+          'Please choose another date.',
+      });
+      return;
+    }
+
     setLoading(true);
     setFeedback(null);
     setSelectedSlot(null);
@@ -141,7 +264,9 @@ export default function BookingPage() {
       });
       setFeedback({
         kind: 'ok',
-        text: `Booking confirmed for ${fmtTime(booking.startsAt)} (${serviceName}, ${durationMin} min).`,
+        text: `Booking confirmed for ${fmtTime(
+          booking.startsAt,
+        )} (${serviceName}, ${durationMin} min).`,
       });
       setSlots((prev) => prev.filter((s) => s.start !== selectedSlot));
       setSelectedSlot(null);
@@ -165,7 +290,10 @@ export default function BookingPage() {
           reason: 'weekly',
         });
       } else {
-        setFeedback({ kind: 'err', text: 'Booking failed. Please try again.' });
+        setFeedback({
+          kind: 'err',
+          text: 'Booking failed. Please try again.',
+        });
       }
     } finally {
       setLoading(false);
@@ -178,9 +306,12 @@ export default function BookingPage() {
     <section className="mt-8 space-y-4">
       {/* Page heading */}
       <header className="px-1 md:px-0">
-        <h1 className="text-2xl font-semibold text-neutral-900">Book an appointment</h1>
+        <h1 className="text-2xl font-semibold text-neutral-900">
+          Book an appointment
+        </h1>
         <p className="text-sm text-neutral-600 mt-1">
-          Choose your barber, service, and time. You’ll see a summary before confirming.
+          Choose your barber, service, and time. You’ll see a summary before
+          confirming.
         </p>
       </header>
 
@@ -193,7 +324,8 @@ export default function BookingPage() {
                 Book your appointment
               </h2>
               <p className="mt-0.5 text-xs text-neutral-300 hidden sm:block">
-                Step 1: Select barber, service and date. Step 2: Pick a time slot.
+                Step 1: Select barber, service and date. Step 2: Pick a time
+                slot.
               </p>
             </div>
             <span className="inline-flex items-center gap-2 text-[11px] text-neutral-300">
@@ -275,7 +407,8 @@ export default function BookingPage() {
                     type="button"
                     className="px-2 py-0.5 rounded-full border border-neutral-200 hover:bg-neutral-100"
                     onClick={() => {
-                      setDate(todayYMD());
+                      const t = todayYMD();
+                      setDate(t);
                       setSelectedSlot(null);
                     }}
                   >
@@ -297,6 +430,12 @@ export default function BookingPage() {
                     Tomorrow
                   </button>
                 </div>
+                {isClosedDateSelected && (
+                  <p className="mt-1 text-xs text-rose-600">
+                    We are closed on weekends and public holidays in NRW. Please
+                    choose another date.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -324,7 +463,12 @@ export default function BookingPage() {
                 <button
                   onClick={handleCheck}
                   disabled={
-                    loading || isBootstrapping || !barberId || !serviceId || !date
+                    loading ||
+                    isBootstrapping ||
+                    !barberId ||
+                    !serviceId ||
+                    !date ||
+                    isClosedDateSelected
                   }
                   className="inline-flex items-center justify-center rounded-lg bg-amber-400 text-neutral-900 font-semibold px-4 py-2 text-sm hover:bg-amber-300 transition disabled:opacity-60"
                 >
@@ -471,7 +615,9 @@ export default function BookingPage() {
           {!showRescheduleCta && (
             <button
               onClick={handleConfirm}
-              disabled={loading || !selectedSlot || !barberId || !serviceId}
+              disabled={
+                loading || !selectedSlot || !barberId || !serviceId
+              }
               className="mt-5 w-full rounded-lg bg-neutral-900 text-white font-semibold py-2 text-sm hover:bg-neutral-800 transition disabled:opacity-50"
             >
               {loading ? 'Booking…' : 'Confirm booking'}

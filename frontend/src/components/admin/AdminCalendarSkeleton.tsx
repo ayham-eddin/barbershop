@@ -1,5 +1,3 @@
-// frontend/src/components/admin/AdminCalendarSkeleton.tsx
-
 export default function AdminCalendarSkeleton() {
   return (
     <div className="animate-pulse space-y-4">

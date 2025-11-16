@@ -1,9 +1,11 @@
+// src/services/bookingOverlap.ts
 import { Types } from 'mongoose';
 import { Appointment } from '@src/models/Appointment';
 
 /**
  * Checks if a time window overlaps with any existing *active* appointment
- * for the given barber. Optionally excludes one booking (when editing).
+ * (booked or rescheduled) for the given barber.
+ * Optionally excludes one booking (when editing).
  */
 export async function hasOverlap(options: {
   barberId: Types.ObjectId;

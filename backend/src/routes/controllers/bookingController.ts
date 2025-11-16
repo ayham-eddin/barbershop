@@ -1,3 +1,4 @@
+// backend/src/routes/controllers/bookingController.ts
 import { Response } from 'express';
 import { Types } from 'mongoose';
 import type { AuthRequest } from '@src/middleware/requireAuth';
@@ -101,7 +102,7 @@ async function assertUserCanBookOrReschedule(userObjId: Types.ObjectId) {
       ok: false as const,
       code: 403,
       msg:
-        'Your online booking is restricted due to repeated no-shows.' + 
+        'Your online booking is restricted due to repeated no-shows.' +
         'Please contact the barbershop at +49 000 0000000 or visit in person.',
     };
   }
@@ -120,7 +121,7 @@ async function assertUserCanBookOrReschedule(userObjId: Types.ObjectId) {
       ok: false as const,
       code: 409,
       msg:
-        'You can only have one active booking within 7 days.' + 
+        'You can only have one active booking within 7 days.' +
         'Please reschedule your existing booking.',
     };
   }
@@ -164,6 +165,13 @@ export async function createBooking(
     return;
   }
 
+  // 🚫 no bookings in the past
+  const now = new Date();
+  if (starts < now) {
+    res.status(400).json({ error: 'Cannot book in the past' });
+    return;
+  }
+
   const userObjId = new Types.ObjectId(userId);
 
   // weekly limit + blocking (Berlin window)
@@ -181,8 +189,6 @@ export async function createBooking(
     res.status(409).json({ error: 'Time slot not available' });
     return;
   }
-
-  const now = new Date();
 
   const appt = await Appointment.create({
     userId: userObjId,
@@ -601,6 +607,14 @@ export async function rescheduleMyBooking(
     res.status(400).json({ error: 'Invalid durationMin (1..480)' });
     return;
   }
+
+  // 🚫 no rescheduling into the past
+  const now = new Date();
+  if (startsAt < now) {
+    res.status(400).json({ error: 'Cannot move booking to a past time' });
+    return;
+  }
+
   const endsAt = new Date(startsAt.getTime() + durationMin * 60_000);
 
   const overlap = await hasOverlap({
