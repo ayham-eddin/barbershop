@@ -181,7 +181,7 @@ export default function DashboardPage() {
         open={editOpen}
         title="Reschedule booking"
         onClose={() => setEditOpen(false)}
-        footer= {
+        footer={
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
@@ -191,8 +191,9 @@ export default function DashboardPage() {
               Cancel
             </button>
             <button
-              type="submit"
+              type="button"
               disabled={rescheduleMut.isPending}
+              onClick={() => rescheduleMut.mutate()}
               className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
             >
               {rescheduleMut.isPending ? 'Saving…' : 'Save changes'}
