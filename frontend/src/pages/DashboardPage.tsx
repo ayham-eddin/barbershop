@@ -6,22 +6,13 @@ import {
   cancelBooking,
   rescheduleMyBooking,
   type Booking,
-  type BookingStatus,
 } from '../api/bookings';
 import { getMe } from '../api/me';
-import Spinner from '../components/Spinner';
 import { notify } from '../lib/notify';
-import { formatBerlin } from '../utils/datetime';
 import Modal from '../components/Modal';
 import TimeField from '../components/TimeField';
-
-function isPast(iso: string) {
-  return new Date(iso).getTime() < Date.now();
-}
-
-function isActive(status: BookingStatus) {
-  return status === 'booked' || status === 'rescheduled';
-}
+import BookingCard from '../components/booking/BookingCard';
+import { isActive, isPast } from '../utils/bookings';
 
 export default function DashboardPage() {
   const qc = useQueryClient();
@@ -120,8 +111,8 @@ export default function DashboardPage() {
       {/* ⚠️ Warning or block banners */}
       {me?.is_online_booking_blocked && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
-          ⚠️ Your online booking is restricted due to repeated no-shows. Please call the barbershop
-          to book in person.
+          ⚠️ Your online booking is restricted due to repeated no-shows. Please call the
+          barbershop to book in person.
         </div>
       )}
 
@@ -135,7 +126,10 @@ export default function DashboardPage() {
       {isLoading && (
         <div className="grid gap-4 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-xl bg-neutral-200 animate-pulse" />
+            <div
+              key={i}
+              className="h-24 rounded-xl bg-neutral-200 animate-pulse"
+            />
           ))}
         </div>
       )}
@@ -162,14 +156,20 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {data
             .slice()
-            .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+            .sort(
+              (a, b) =>
+                new Date(a.startsAt).getTime() -
+                new Date(b.startsAt).getTime(),
+            )
             .map((b) => (
               <BookingCard
                 key={b._id}
                 booking={b}
                 onCancel={() => cancelMut.mutate(b._id)}
                 onReschedule={() => openReschedule(b)}
-                cancelling={cancelMut.isPending && cancelMut.variables === b._id}
+                cancelling={
+                  cancelMut.isPending && cancelMut.variables === b._id
+                }
                 canReschedule={isActive(b.status) && !isPast(b.startsAt)}
               />
             ))}
@@ -177,21 +177,11 @@ export default function DashboardPage() {
       )}
 
       {/* Reschedule Modal */}
-      <Modal open={editOpen} title="Reschedule booking" onClose={() => setEditOpen(false)}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            rescheduleMut.mutate();
-          }}
-          className="space-y-3"
-        >
-          <TimeField
-            value={editStartsAtLocal}
-            onChange={(iso) => setEditStartsAtLocal(iso)}
-            label="Starts at"
-            required
-          />
-
+      <Modal
+        open={editOpen}
+        title="Reschedule booking"
+        onClose={() => setEditOpen(false)}
+        footer= {
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
@@ -208,112 +198,23 @@ export default function DashboardPage() {
               {rescheduleMut.isPending ? 'Saving…' : 'Save changes'}
             </button>
           </div>
+        }
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            rescheduleMut.mutate();
+          }}
+          className="space-y-3"
+        >
+          <TimeField
+            value={editStartsAtLocal}
+            onChange={(iso) => setEditStartsAtLocal(iso)}
+            label="Starts at"
+            required
+          />
         </form>
       </Modal>
     </section>
-  );
-}
-
-function StatusBadge({ status }: { status: Booking['status'] }) {
-  const map: Record<BookingStatus, string> = {
-    booked: 'bg-amber-100 text-amber-800 border-amber-200',
-    rescheduled: 'bg-sky-100 text-sky-800 border-sky-200',
-    completed: 'bg-green-100 text-green-800 border-green-200',
-    cancelled: 'bg-neutral-100 text-neutral-700 border-neutral-200',
-    no_show: 'bg-rose-100 text-rose-800 border-rose-200',
-  };
-  return (
-    <span className={`text-xs font-medium px-2 py-1 rounded-full border ${map[status]}`}>
-      {status.replace('_', ' ')}
-    </span>
-  );
-}
-
-function BookingCard({
-  booking,
-  onCancel,
-  onReschedule,
-  cancelling,
-  canReschedule,
-}: {
-  booking: Booking;
-  onCancel: () => void;
-  onReschedule: () => void;
-  cancelling: boolean;
-  canReschedule: boolean;
-}) {
-  const past = isPast(booking.startsAt);
-  const canCancel = (booking.status === 'booked' || booking.status === 'rescheduled') && !past;
-  const barberLabel = booking.barber?.name ?? booking.barber?.id ?? booking.barberId;
-
-  return (
-    <article className="rounded-2xl bg-white border border-neutral-200 p-5 shadow-sm flex flex-col gap-3">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="font-medium text-neutral-900">
-          {booking.serviceName}{' '}
-          <span className="text-neutral-400">•</span> {booking.durationMin} min
-        </h3>
-        <StatusBadge status={booking.status} />
-      </div>
-
-      {/* Date & barber */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 text-sm">
-        <p className="text-neutral-700">{formatBerlin(booking.startsAt)}</p>
-        <p className="text-xs text-neutral-500">Barber: {barberLabel}</p>
-      </div>
-
-      {/* Notes */}
-      {booking.notes && (
-        <p className="text-sm text-neutral-600 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2">
-          <span className="font-medium text-neutral-700">Note:</span> {booking.notes}
-        </p>
-      )}
-
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-        {/* spacer on desktop – we already show barber above */}
-        <div className="hidden sm:block" />
-
-        <div className="flex flex-wrap justify-end gap-2">
-          {canReschedule && (
-            <button
-              onClick={onReschedule}
-              className="text-sm border border-neutral-300 rounded-lg px-3 py-1.5 hover:bg-neutral-100 transition"
-              title="Reschedule this booking"
-            >
-              Reschedule
-            </button>
-          )}
-          <a
-            href="/book"
-            className="text-sm text-neutral-700 hover:text-neutral-900 underline underline-offset-4"
-          >
-            Book another
-          </a>
-          <button
-            onClick={onCancel}
-            disabled={!canCancel || cancelling}
-            className="text-sm bg-neutral-900 text-white rounded-lg px-3 py-1.5 hover:bg-neutral-800 transition disabled:opacity-50"
-            title={
-              !canCancel
-                ? past
-                  ? 'Past booking cannot be cancelled'
-                  : 'Already cancelled'
-                : 'Cancel this booking'
-            }
-          >
-            {cancelling ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner aria-label="Cancelling" />
-                Cancelling…
-              </span>
-            ) : (
-              'Cancel'
-            )}
-          </button>
-        </div>
-      </div>
-    </article>
   );
 }
