@@ -1,9 +1,8 @@
-// src/services/bookingOverlap.ts
 import { Types } from 'mongoose';
 import { Appointment } from '@src/models/Appointment';
 
 /**
- * Checks if a time window overlaps with any existing *booked* appointment
+ * Checks if a time window overlaps with any existing *active* appointment
  * for the given barber. Optionally excludes one booking (when editing).
  */
 export async function hasOverlap(options: {
@@ -16,7 +15,7 @@ export async function hasOverlap(options: {
 
   const filter: Record<string, unknown> = {
     barberId,
-    status: 'booked',
+    status: { $in: ['booked', 'rescheduled'] },
     startsAt: { $lt: endsAt },
     endsAt: { $gt: startsAt },
   };

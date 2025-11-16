@@ -1,4 +1,3 @@
-// src/services/scheduling.ts
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -62,7 +61,7 @@ export async function getAvailableSlots(
   // Find overlapping appointments
   const appointments = await Appointment.find({
     barberId: barber._id,
-    status: 'booked',
+    status: { $in: ['booked', 'rescheduled'] }, // ✅ treat rescheduled as active
     startsAt: { $lt: rangeEnd.toDate() },
     endsAt: { $gt: rangeStart.toDate() },
   })
@@ -121,7 +120,7 @@ export async function hasOverlap(params: {
 
   const q: Record<string, unknown> = {
     barberId,
-    status: 'booked',
+    status: { $in: ['booked', 'rescheduled'] },
     startsAt: { $lt: endsAt },
     endsAt: { $gt: startsAt },
   };
