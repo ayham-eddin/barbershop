@@ -63,16 +63,6 @@ function weekdayLabel(day: number): string {
   return map[day] ?? String(day);
 }
 
-// still kept in case you want the comma-separated string somewhere else
-function formatWorkingHours(blocks: WorkingHour[]): string {
-  if (!blocks.length) return 'Not set';
-  return blocks
-    .slice()
-    .sort((a, b) => a.day - b.day)
-    .map((b) => `${weekdayLabel(b.day)} ${b.start}–${b.end}`)
-    .join(', ');
-}
-
 export default function AdminBarbersPage() {
   const qc = useQueryClient();
 
