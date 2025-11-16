@@ -600,7 +600,29 @@ export default function AdminBarbersPage() {
       )}
 
       {/* Edit modal */}
-      <Modal open={editOpen} title="Edit barber" onClose={closeEdit}>
+      <Modal 
+        open={editOpen} 
+        title="Edit barber" 
+        onClose={closeEdit}
+        footer={
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+              onClick={closeEdit}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
+              disabled={updateMut.isPending}
+            >
+              {updateMut.isPending ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        }
+        >
         <form onSubmit={onSubmitEdit} className="space-y-3">
           <label className="block text-sm font-medium text-neutral-700">
             Name
@@ -687,23 +709,6 @@ export default function AdminBarbersPage() {
                 );
               })}
             </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
-              onClick={closeEdit}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-              disabled={updateMut.isPending}
-            >
-              {updateMut.isPending ? 'Saving…' : 'Save changes'}
-            </button>
           </div>
         </form>
       </Modal>

@@ -1,3 +1,4 @@
+// frontend/src/pages/BookingPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -12,6 +13,8 @@ import api from '../api/client';
 import { getServices, type Service } from '../api/public';
 import { formatBerlinTime } from '../utils/datetime';
 import { isClosedDateYmd } from '../utils/closedDaysNRW';
+import SlotGrid from '../components/booking/SlotGrid';
+import BookingSummaryDetails from '../components/booking/BookingSummaryDetails';
 
 type Barber = { _id: string; name: string };
 
@@ -422,48 +425,13 @@ export default function BookingPage() {
                 <h2 className="text-sm font-medium text-neutral-700 mb-2">
                   Available slots
                 </h2>
-                {!slots.length && !loading && (
-                  <p className="text-neutral-500 text-sm">
-                    Choose options above, then tap{' '}
-                    <span className="font-medium">Check availability</span> to
-                    see times.
-                  </p>
-                )}
-                {loading && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-10 rounded-lg bg-neutral-200 animate-pulse"
-                      />
-                    ))}
-                  </div>
-                )}
-                {!loading && !!slots.length && (
-                  <div className="max-h-64 overflow-y-auto pr-1">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {slots.map((s) => {
-                        const active = selectedSlot === s.start;
-                        return (
-                          <button
-                            key={s.start}
-                            onClick={() => setSelectedSlot(s.start)}
-                            className={`rounded-lg border px-3 py-2 text-sm transition ${
-                              active
-                                ? 'bg-amber-100 border-amber-300 text-neutral-900'
-                                : 'bg-white border-neutral-300 hover:bg-amber-50 text-neutral-800'
-                            }`}
-                            disabled={loading}
-                            title={`${fmtTime(s.start)}–${fmtTime(s.end)}`}
-                            type="button"
-                          >
-                            {fmtTime(s.start)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <SlotGrid
+                  slots={slots}
+                  selectedSlot={selectedSlot}
+                  loading={loading}
+                  onSelect={(start) => setSelectedSlot(start)}
+                  formatTime={fmtTime}
+                />
               </div>
             )}
           </div>
@@ -477,49 +445,18 @@ export default function BookingPage() {
           <p className="mt-1 text-xs text-neutral-500 md:text-[13px]">
             Double-check the details, then confirm your booking.
           </p>
-          <dl className="mt-3 space-y-2 text-sm">
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-neutral-600">Barber</dt>
-              <dd className="font-medium text-neutral-900 text-right">
-                {barbers.find((b) => b._id === barberId)?.name ?? '—'}
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-neutral-600">Service</dt>
-              <dd className="font-medium text-neutral-900 text-right">
-                {serviceName} ({durationMin} min)
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-neutral-600">Date</dt>
-              <dd className="font-medium text-neutral-900 text-right">
-                {date || '—'}
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-neutral-600">Time</dt>
-              <dd className="font-medium text-neutral-900 text-right">
-                {selectedSlot ? fmtTime(selectedSlot) : '—'}
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-neutral-600">Price</dt>
-              <dd className="font-medium text-neutral-900 text-right">
-                €{chosenService?.price ?? 0}
-              </dd>
-            </div>
-            {notes.trim() && (
-              <div className="flex items-start justify-between gap-4">
-                <dt className="text-neutral-600 mt-0.5">Notes</dt>
-                <dd
-                  className="font-medium text-neutral-900 max-w-[220px] text-right truncate"
-                  title={notes}
-                >
-                  {notes}
-                </dd>
-              </div>
-            )}
-          </dl>
+
+          <BookingSummaryDetails
+            barbers={barbers}
+            barberId={barberId}
+            serviceName={serviceName}
+            durationMin={durationMin}
+            date={date}
+            selectedSlot={selectedSlot}
+            price={chosenService?.price ?? 0}
+            notes={notes}
+            formatTime={fmtTime}
+          />
 
           {!showRescheduleCta && (
             <button
