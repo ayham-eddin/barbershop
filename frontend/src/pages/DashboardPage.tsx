@@ -1,3 +1,4 @@
+// frontend/src/pages/DashboardPage.tsx
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -68,30 +69,30 @@ export default function DashboardPage() {
   // Reschedule modal state
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editStartsAtLocal, setEditStartsAtLocal] = useState<string>(''); // yyyy-MM-ddTHH:mm
-  const [editDurationMin, setEditDurationMin] = useState<number>(30);
+  const [editStartsAtLocal, setEditStartsAtLocal] = useState<string>(''); // yyyy-MM-ddTHH:mm or ISO
 
   function openReschedule(b: Booking) {
     setEditId(b._id);
     // prefill from current values
     const d = new Date(b.startsAt);
     const pad = (n: number) => String(n).padStart(2, '0');
-    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-      d.getHours(),
-    )}:${pad(d.getMinutes())}`;
+    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate(),
+    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     setEditStartsAtLocal(local);
-    setEditDurationMin(b.durationMin);
     setEditOpen(true);
   }
 
   const rescheduleMut = useMutation({
     mutationFn: async () => {
       if (!editId) return null;
-      const startsAt =
-        editStartsAtLocal ? new Date(editStartsAtLocal).toISOString() : undefined;
-      const patch: Partial<{ startsAt: string; durationMin: number }> = {};
+      const startsAt = editStartsAtLocal
+        ? new Date(editStartsAtLocal).toISOString()
+        : undefined;
+
+      const patch: Partial<{ startsAt: string }> = {};
       if (startsAt) patch.startsAt = startsAt;
-      if (Number.isFinite(editDurationMin)) patch.durationMin = editDurationMin;
+
       return rescheduleMyBooking(editId, patch);
     },
     onSuccess: () => {
@@ -186,23 +187,10 @@ export default function DashboardPage() {
         >
           <TimeField
             value={editStartsAtLocal}
-            onChange={(isoLocal) => setEditStartsAtLocal(isoLocal)}
+            onChange={(iso) => setEditStartsAtLocal(iso)}
             label="Starts at"
             required
           />
-
-          <label className="block text-sm font-medium text-neutral-700">
-            Duration (min)
-            <input
-              type="number"
-              min={5}
-              max={480}
-              value={editDurationMin}
-              onChange={(e) => setEditDurationMin(Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              required
-            />
-          </label>
 
           <div className="flex justify-end gap-2 pt-2">
             <button
