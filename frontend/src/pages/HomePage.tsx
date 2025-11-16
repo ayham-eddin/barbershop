@@ -1,3 +1,4 @@
+// frontend/src/pages/HomePage.tsx
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -7,32 +8,44 @@ import {
   type Service,
   type Barber,
 } from "../api/public";
+import ServiceCard from "../components/home/ServiceCard";
+import BarberCard from "../components/home/BarberCard";
+import {
+  CountBadge,
+  ListSkeleton,
+  ErrorBox,
+  EmptyBox,
+} from "../components/home/HomeSectionHelpers";
 
 export default function HomePage() {
-  const [role, setRole] = useState<'user' | 'admin' | null>(null);
+  const [role, setRole] = useState<"user" | "admin" | null>(null);
 
   useEffect(() => {
-    setRole((localStorage.getItem('role') as 'user' | 'admin' | null) || null);
+    setRole(
+      (localStorage.getItem("role") as "user" | "admin" | null) || null,
+    );
     const onStorage = () =>
-      setRole((localStorage.getItem('role') as 'user' | 'admin' | null) || null);
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+      setRole(
+        (localStorage.getItem("role") as "user" | "admin" | null) || null,
+      );
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const {
     data: services,
     isLoading: sLoading,
     isError: sError,
-  } = useQuery({ queryKey: ["services"], queryFn: getServices });
+  } = useQuery<Service[]>({ queryKey: ["services"], queryFn: getServices });
 
   const {
     data: barbers,
     isLoading: bLoading,
     isError: bError,
-  } = useQuery({ queryKey: ["barbers"], queryFn: getBarbers });
+  } = useQuery<Barber[]>({ queryKey: ["barbers"], queryFn: getBarbers });
 
   const servicesCount = services?.length ?? 0;
-  const barbersCount  = barbers?.length ?? 0;
+  const barbersCount = barbers?.length ?? 0;
 
   return (
     <div className="space-y-14">
@@ -51,7 +64,7 @@ export default function HomePage() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            {role !== 'admin' ? (
+            {role !== "admin" ? (
               <Link
                 to="/book"
                 className="inline-flex items-center rounded-lg bg-amber-400 px-5 py-2.5 text-neutral-900 font-semibold hover:bg-amber-300 transition shadow-sm"
@@ -87,8 +100,6 @@ export default function HomePage() {
             >
               Meet Barbers
             </a>
-
-            {/* New: quick links to About / Contact */}
             <Link
               to="/about"
               className="inline-flex items-center rounded-lg border border-neutral-700 px-5 py-2.5 text-white hover:bg-neutral-800 transition"
@@ -109,17 +120,17 @@ export default function HomePage() {
       <section id="services" className="space-y-5">
         <div className="flex items-end justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-semibold text-neutral-900">Services</h2>
-            <CountBadge
-              loading={sLoading}
-              count={servicesCount}
-              label="items"
-            />
+            <h2 className="text-2xl font-semibold text-neutral-900">
+              Services
+            </h2>
+            <CountBadge loading={sLoading} count={servicesCount} label="items" />
           </div>
         </div>
 
         {sLoading && <ListSkeleton />}
-        {sError && <ErrorBox text="Couldn’t load services. Please retry." />}
+        {sError && (
+          <ErrorBox text="Couldn’t load services. Please retry." />
+        )}
 
         {services && (
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -138,7 +149,9 @@ export default function HomePage() {
       <section id="barbers" className="space-y-5">
         <div className="flex items-end justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-semibold text-neutral-900">Barbers</h2>
+            <h2 className="text-2xl font-semibold text-neutral-900">
+              Barbers
+            </h2>
             <CountBadge
               loading={bLoading}
               count={barbersCount}
@@ -148,7 +161,9 @@ export default function HomePage() {
         </div>
 
         {bLoading && <ListSkeleton />}
-        {bError && <ErrorBox text="Couldn’t load barbers. Please retry." />}
+        {bError && (
+          <ErrorBox text="Couldn’t load barbers. Please retry." />
+        )}
 
         {barbers && (
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -162,111 +177,6 @@ export default function HomePage() {
           <EmptyBox text="No barbers available yet." />
         )}
       </section>
-    </div>
-  );
-}
-
-/* ---------------------------- UI SUBCOMPONENTS ---------------------------- */
-
-function CountBadge({ loading, count, label }: { loading: boolean; count: number; label: string }) {
-  if (loading) {
-    return (
-      <span className="h-6 w-16 rounded-full bg-neutral-200 animate-pulse inline-block" />
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700">
-      <span className="min-w-[1ch] text-center">{count}</span>
-      <span className="text-neutral-500">{label}</span>
-    </span>
-  );
-}
-
-function ServiceCard({ service, role }: { service: Service; role: 'user' | 'admin' | null }) {
-  const isAdmin = role === 'admin';
-  return (
-    <article className="group relative rounded-2xl bg-white border border-neutral-200 p-5 shadow-sm hover:shadow-md transition">
-      <div className="flex items-start justify-between gap-4">
-        <h3 className="font-medium text-neutral-900">{service.name}</h3>
-        <span className="rounded-full bg-amber-100 text-amber-900 text-xs px-3 py-1 font-semibold">
-          €{service.price}
-        </span>
-      </div>
-      <p className="text-sm text-neutral-600 mt-1">{service.durationMin} min</p>
-
-      {!isAdmin ? (
-        <Link
-          to="/book"
-          className="mt-4 inline-flex items-center rounded-lg bg-neutral-900 text-white px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 transition"
-        >
-          Book
-        </Link>
-      ) : (
-        <Link
-          to="/admin/services"
-          className="mt-4 inline-flex items-center rounded-lg bg-neutral-900 text-white px-3 py-1.5 text-sm font-medium hover:bg-neutral-800 transition"
-        >
-          Manage
-        </Link>
-      )}
-
-      <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-transparent group-hover:ring-neutral-200" />
-    </article>
-  );
-}
-
-function BarberCard({ barber }: { barber: Barber }) {
-  const initials = barber.name
-    .split(" ")
-    .map((x) => x[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  return (
-    <article className="rounded-2xl bg-white border border-neutral-200 p-5 shadow-sm hover:shadow-md transition">
-      <div className="flex items-center gap-4">
-        <div className="h-12 w-12 rounded-full bg-neutral-900 text-white flex items-center justify-center font-semibold">
-          {initials}
-        </div>
-        <div>
-          <h3 className="font-medium text-neutral-900">{barber.name}</h3>
-          <p className="text-sm text-neutral-600">
-            {Array.isArray(barber.workingHours) && barber.workingHours.length
-              ? `Mon–Fri ${barber.workingHours[0].start}–${barber.workingHours[0].end}`
-              : "Hours not set"}
-          </p>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function ListSkeleton() {
-  return (
-    <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-28 rounded-2xl bg-gradient-to-r from-neutral-200 to-neutral-100 animate-pulse"
-        />
-      ))}
-    </div>
-  );
-}
-
-function ErrorBox({ text }: { text: string }) {
-  return (
-    <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-800 px-4 py-3 text-sm">
-      {text}
-    </div>
-  );
-}
-
-function EmptyBox({ text }: { text: string }) {
-  return (
-    <div className="rounded-xl border border-neutral-200 bg-white px-4 py-6 text-center text-neutral-600">
-      {text}
     </div>
   );
 }
