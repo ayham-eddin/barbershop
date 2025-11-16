@@ -9,6 +9,7 @@ import { validateBody, validateParams } from '@src/middleware/validate';
 
 import { Barber, type BarberDoc, type WorkingHour } from '@src/models/Barber';
 import { Appointment, type AppointmentDoc } from '@src/models/Appointment';
+import { User } from '@src/models/User';
 
 const r = Router();
 
@@ -177,8 +178,8 @@ r.patch(
         .lean()
         .exec();
 
-      // TS: go through unknown before casting to our helper type
-      const futureBookings = futureBookingsRaw as unknown as PopulatedAppointment[];
+      const futureBookings =
+        futureBookingsRaw as unknown as PopulatedAppointment[];
 
       const isInsideHours = (dt: Date): boolean => {
         const day = dt.getDay(); // 0..6
@@ -201,10 +202,11 @@ r.patch(
       });
 
       affectedBookings = invalid.map((b) => {
-        const user =
-          typeof b.userId === 'object' && b.userId !== null && 'email' in b.userId
-            ? (b.userId as { name?: string; email?: string })
-            : undefined;
+        let user: { name?: string; email?: string } | undefined;
+
+        if (b.userId && typeof b.userId === 'object' && 'name' in b.userId) {
+          user = b.userId as { name?: string; email?: string };
+        }
 
         return {
           id: b._id.toString(),
@@ -223,7 +225,7 @@ r.patch(
   },
 );
 
-// DELETE /api/admin/barbers/:id  (safe delete with future booking check)
+// DELETE /api/admin/barbers/:id  (safe delete with future booking list)
 r.delete(
   '/:id',
   requireAuth,
@@ -233,22 +235,78 @@ r.delete(
     const { id } = req.params as z.infer<typeof idParams>;
     const _id = new Types.ObjectId(id);
 
-    // Check for future booked/rescheduled appointments
+    // Load barber first (for name + existence check)
+    const barber = await Barber.findById(_id)
+      .lean<BarberDoc | null>()
+      .exec();
+
+    if (!barber) {
+      return res.status(404).json({ error: 'Barber not found' });
+    }
+
     const now = new Date();
-    const hasFutureBookings = await Appointment.exists({
+
+    type PopulatedAppointmentLean = AppointmentDoc & {
+      userId?:
+        | Types.ObjectId
+        | {
+            _id: Types.ObjectId;
+            name?: string;
+            email?: string;
+          };
+    };
+
+    const futureAppointmentsRaw = await Appointment.find({
       barberId: _id,
       status: { $in: ['booked', 'rescheduled'] },
       startsAt: { $gte: now },
-    }).exec();
+    })
+      .populate({
+        path: 'userId',
+        model: User,
+        select: 'name email',
+      })
+      .sort({ startsAt: 1 })
+      .limit(20)
+      .lean()
+      .exec();
 
-    if (hasFutureBookings) {
+    const futureAppointments =
+      futureAppointmentsRaw as unknown as PopulatedAppointmentLean[];
+
+    if (futureAppointments.length > 0) {
+      const bookings = futureAppointments.map((appt) => {
+        let user: { name?: string; email?: string } | undefined;
+
+        if (
+          appt.userId &&
+          typeof appt.userId === 'object' &&
+          '_id' in appt.userId
+        ) {
+          user = appt.userId as { name?: string; email?: string };
+        }
+
+        return {
+          id: String(appt._id),
+          startsAt: appt.startsAt,
+          serviceName: appt.serviceName,
+          userName: user?.name ?? undefined,
+          userEmail: user?.email ?? undefined,
+        };
+      });
+
       return res.status(409).json({
         error:
-          'Cannot delete barber with active future bookings. ' +
+          'Cannot delete barber with active future bookings.' + 
           'Set them inactive or reassign/cancel bookings first.',
+        conflict_type: 'future_bookings',
+        barberId: String(barber._id),
+        barberName: barber.name,
+        bookings,
       });
     }
 
+    // No future bookings → safe to delete
     const deleted = await Barber.findByIdAndDelete(_id)
       .lean<BarberDoc | null>()
       .exec();

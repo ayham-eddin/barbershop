@@ -31,9 +31,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err: AxiosError<{ error?: string; message?: string }>) => {
+    // No response at all -> network / server offline
     if (!err.response) {
       return Promise.reject(
-        new Error('Server unavailable. Please try again later.')
+        new Error('Server unavailable. Please try again later.'),
       );
     }
 
@@ -58,14 +59,19 @@ api.interceptors.response.use(
       }
     }
 
+    // 👇 IMPORTANT: keep the AxiosError object (with response + data),
+    // just make sure `.message` is something nice.
     const msg =
       err.response.data?.error ||
       err.response.data?.message ||
       err.message ||
       'Request failed';
 
-    return Promise.reject(new Error(msg));
-  }
+    err.message = msg;
+
+    // Re-throw the original AxiosError so callers can read `err.response.data`
+    return Promise.reject(err);
+  },
 );
 
 export default api;
