@@ -1,39 +1,25 @@
 // src/pages/LoginPage.tsx
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { AxiosError } from 'axios';
-import api from '../api/client';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../api/client";
+import { extractErrorMessage } from "../utils/httpErrors";
 
 export interface LoginPageProps {
-  onLogin: (token: string, role: 'user' | 'admin') => void;
-}
-
-function extractErrorMessage(err: unknown): string {
-  const fallback = 'Request failed';
-  if (typeof err === 'string') return err;
-  if (err && typeof err === 'object') {
-    const ax = err as AxiosError<{ error?: string; message?: string }>;
-    const msg =
-      ax.response?.data?.error ??
-      ax.response?.data?.message ??
-      (ax.message || fallback);
-    return typeof msg === 'string' ? msg : fallback;
-  }
-  return fallback;
+  onLogin: (token: string, role: "user" | "admin") => void;
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
   const switchMode = () => {
-    setMode((m) => (m === 'login' ? 'register' : 'login'));
+    setMode((m) => (m === "login" ? "register" : "login"));
     setError(null);
   };
 
@@ -44,26 +30,36 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       let token: string;
-      let role: 'user' | 'admin';
+      let role: "user" | "admin";
 
-      if (mode === 'login') {
-        const res = await api.post('/api/auth/login', { email, password });
-        const data = res.data as { token: string; user: { role: 'user' | 'admin' } };
+      if (mode === "login") {
+        const res = await api.post("/api/auth/login", { email, password });
+        const data = res.data as {
+          token: string;
+          user: { role: "user" | "admin" };
+        };
         token = data.token;
         role = data.user.role;
       } else {
-        const res = await api.post('/api/auth/register', { name, email, password });
-        const data = res.data as { token: string; user: { role: 'user' | 'admin' } };
+        const res = await api.post("/api/auth/register", {
+          name,
+          email,
+          password,
+        });
+        const data = res.data as {
+          token: string;
+          user: { role: "user" | "admin" };
+        };
         token = data.token;
         role = data.user.role;
       }
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('role', role);
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", role);
       onLogin(token, role);
 
       // ✅ Redirect to home after login/register
-      navigate('/', { replace: true });
+      navigate("/", { replace: true });
     } catch (err: unknown) {
       setError(extractErrorMessage(err));
     } finally {
@@ -71,16 +67,26 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
   };
 
+  const buttonLabel = loading
+    ? mode === "login"
+      ? "Signing in…"
+      : "Creating account…"
+    : mode === "login"
+    ? "Login"
+    : "Register";
+
   return (
     <div className="max-w-md mx-auto bg-white rounded-2xl shadow-md p-8 mt-20">
       <h1 className="text-2xl font-semibold text-neutral-900 mb-6 text-center">
-        {mode === 'login' ? 'Welcome back' : 'Create your account'}
+        {mode === "login" ? "Welcome back" : "Create your account"}
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {mode === 'register' && (
+        {mode === "register" && (
           <div>
-            <label className="block text-sm font-medium text-neutral-700">Name</label>
+            <label className="block text-sm font-medium text-neutral-700">
+              Name
+            </label>
             <input
               type="text"
               className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -92,7 +98,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-neutral-700">Email</label>
+          <label className="block text-sm font-medium text-neutral-700">
+            Email
+          </label>
           <input
             type="email"
             className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -104,13 +112,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-700">Password</label>
+          <label className="block text-sm font-medium text-neutral-700">
+            Password
+          </label>
           <input
             type="password"
             className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
             required
           />
         </div>
@@ -126,13 +136,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           disabled={loading}
           className="w-full rounded-lg bg-amber-400 text-neutral-900 font-semibold py-2 hover:bg-amber-300 transition disabled:opacity-60"
         >
-          {loading
-            ? mode === 'login'
-              ? 'Signing in…'
-              : 'Creating account…'
-            : mode === 'login'
-            ? 'Login'
-            : 'Register'}
+          {buttonLabel}
         </button>
       </form>
 
@@ -142,9 +146,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           className="text-sm text-neutral-600 hover:text-neutral-900 underline underline-offset-4"
           type="button"
         >
-          {mode === 'login'
+          {mode === "login"
             ? "Don't have an account? Register"
-            : 'Already have an account? Login'}
+            : "Already have an account? Login"}
         </button>
       </div>
     </div>
