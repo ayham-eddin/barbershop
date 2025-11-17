@@ -59,14 +59,14 @@ function RequireAdmin({
 
 /* ------------------------------- App ------------------------------- */
 
-export default function App() {
+const App = () => {
   const [token, setToken] = useState<string | null>(
     localStorage.getItem('token'),
   );
   const [role, setRole] = useState<Role>(
     (localStorage.getItem('role') as Role) || null,
   );
-
+  // listen to localStorage changes (multi-tab support)
   useEffect(() => {
     const onStorage = () => {
       setToken(localStorage.getItem('token'));
@@ -76,6 +76,7 @@ export default function App() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
+  // logout handler
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
@@ -213,3 +214,4 @@ export default function App() {
     </Router>
   );
 }
+export default App;
