@@ -11,7 +11,7 @@ import {
   ProfileBookingStatus,
 } from "../components/profile/ProfileInfo";
 
-export default function ProfilePage() {
+const ProfilePage = () => {
   const qc = useQueryClient();
 
   // load current profile
@@ -115,3 +115,5 @@ export default function ProfilePage() {
     </section>
   );
 }
+
+export default ProfilePage;

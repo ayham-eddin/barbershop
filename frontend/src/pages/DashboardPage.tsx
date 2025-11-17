@@ -19,7 +19,7 @@ import {
   NoBookingsCard,
 } from '../components/booking/BookingsStates';
 
-export default function DashboardPage() {
+const DashboardPage = () => {
   const qc = useQueryClient();
 
   // ✅ Fetch user info (warnings / block)
@@ -68,7 +68,7 @@ export default function DashboardPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editStartsAtLocal, setEditStartsAtLocal] = useState<string>(''); // yyyy-MM-ddTHH:mm or ISO
 
-  function openReschedule(b: Booking) {
+  const openReschedule = (b: Booking) => {
     setEditId(b._id);
 
     // prefill from current values (local datetime string)
@@ -200,9 +200,11 @@ export default function DashboardPage() {
   );
 }
 
+export default DashboardPage;
+
 /* ---------------------------- Small helpers ---------------------------- */
 
-function WarningBanners({ me }: { me: Awaited<ReturnType<typeof getMe>> | undefined }) {
+const WarningBanners = ({ me }: { me: Awaited<ReturnType<typeof getMe>> | undefined }) => {
   if (!me) return null;
 
   if (me.is_online_booking_blocked) {

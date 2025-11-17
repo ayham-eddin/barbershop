@@ -11,7 +11,7 @@ import { extractErrorMessage } from "../../utils/httpErrors";
 
 type AdminListResponse = { services: Service[] };
 
-export default function AdminServicesPage() {
+const AdminServicesPage = () => {
   const qc = useQueryClient();
 
   // ---- load list ----
@@ -38,7 +38,7 @@ export default function AdminServicesPage() {
   const [editDurationMin, setEditDurationMin] = useState<number>(30);
   const [editPrice, setEditPrice] = useState<number>(10);
 
-  function openEdit(s: Service) {
+  const openEdit = (s: Service) => {
     setEditId(s._id);
     setEditName(s.name);
     setEditDurationMin(s.durationMin);
@@ -46,7 +46,7 @@ export default function AdminServicesPage() {
     setEditOpen(true);
   }
 
-  function closeEdit() {
+  const closeEdit = () => {
     setEditOpen(false);
     setEditId(null);
   }
@@ -277,3 +277,4 @@ export default function AdminServicesPage() {
     </div>
   );
 }
+export default AdminServicesPage;

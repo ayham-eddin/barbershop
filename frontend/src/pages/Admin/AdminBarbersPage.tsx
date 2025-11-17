@@ -1,4 +1,3 @@
-// frontend/src/pages/Admin/AdminBarbersPage.tsx
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -39,7 +38,7 @@ const DEFAULT_WORKING_HOURS: WorkingHour[] = [
 
 const DAY_ORDER: number[] = [1, 2, 3, 4, 5, 6, 0];
 
-function weekdayLabel(day: number): string {
+const weekdayLabel = (day: number): string => {
   const map: Record<number, string> = {
     0: "Sun",
     1: "Mon",
@@ -52,7 +51,7 @@ function weekdayLabel(day: number): string {
   return map[day] ?? String(day);
 }
 
-export default function AdminBarbersPage() {
+const AdminBarbersPage = () => {
   const qc = useQueryClient();
 
   // ---- load list ----
@@ -84,7 +83,7 @@ export default function AdminBarbersPage() {
   const [deleteConflict, setDeleteConflict] =
     useState<DeleteConflictState | null>(null);
 
-  function openEdit(b: Barber) {
+  const openEdit = (b: Barber) => {
     setEditId(b._id);
     setEditName(b.name);
     setEditSpecialtiesInput(b.specialties.join(", "));
@@ -93,7 +92,7 @@ export default function AdminBarbersPage() {
     setEditOpen(true);
   }
 
-  function closeEdit() {
+  const closeEdit = () => {
     setEditOpen(false);
     setEditId(null);
   }
@@ -107,7 +106,7 @@ export default function AdminBarbersPage() {
       .filter(Boolean);
 
   // working-hour helpers for edit modal
-  function setDayEnabled(day: number, enabled: boolean) {
+  const setDayEnabled = (day: number, enabled: boolean) => {
     setEditWorkingHours((prev) => {
       const exists = prev.find((w) => w.day === day);
       if (enabled) {
@@ -125,7 +124,7 @@ export default function AdminBarbersPage() {
     });
   }
 
-  function updateDayField(day: number, field: "start" | "end", value: string) {
+  const updateDayField = (day: number, field: "start" | "end", value: string) => {
     setEditWorkingHours((prev) => {
       const exists = prev.find((w) => w.day === day);
       if (!exists) {
@@ -141,11 +140,11 @@ export default function AdminBarbersPage() {
     });
   }
 
-  function getDayConfig(day: number): {
+  const getDayConfig = (day: number): {
     enabled: boolean;
     start: string;
     end: string;
-  } {
+  } => {
     const block = editWorkingHours.find((w) => w.day === day);
     return {
       enabled: !!block,
@@ -601,3 +600,4 @@ export default function AdminBarbersPage() {
     </div>
   );
 }
+export default AdminBarbersPage;

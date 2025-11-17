@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-export default function AboutPage() {
+const AboutPage = () => {
   return (
     <section className="space-y-8">
       <header className="max-w-3xl">
@@ -82,3 +82,5 @@ export default function AboutPage() {
     </section>
   );
 }
+
+export default AboutPage;

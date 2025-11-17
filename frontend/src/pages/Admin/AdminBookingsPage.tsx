@@ -1,5 +1,3 @@
-// frontend/src/pages/Admin/AdminBookingsPage.tsx
-
 import { useEffect, useMemo, useState } from "react";
 import {
   useQuery,
@@ -64,13 +62,13 @@ interface Barber {
 
 /* ------------------------- Date helpers -------------------------- */
 
-function ymd(d: Date) {
+const ymd = (d: Date) => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 }
-function addDays(d: Date, n: number) {
+const addDays = (d: Date, n: number) => {
   const c = new Date(d);
   c.setDate(c.getDate() + n);
   return c;
@@ -78,7 +76,7 @@ function addDays(d: Date, n: number) {
 
 /* ========================= Component ============================= */
 
-export default function AdminBookingsPage() {
+const AdminBookingsPage = () => {
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
 
@@ -126,7 +124,7 @@ export default function AdminBookingsPage() {
   }, [searchParams]);
 
   // Helper: when user changes view day, keep list range in sync
-  function setViewDateAndSync(d: Date) {
+  const setViewDateAndSync = (d: Date) => {
     setViewDate(d);
     setListFrom(d);
     setListTo(d);
@@ -295,7 +293,7 @@ export default function AdminBookingsPage() {
   const [editStartsAtLocal, setEditStartsAtLocal] = useState<string>("");
   const [editNotes, setEditNotes] = useState<string>("");
 
-  function openEdit(b: AdminBooking) {
+  const openEdit = (b: AdminBooking) => {
     setEditId(b._id);
     setEditBarberId(b.barber?.id ?? "");
     setEditServiceName(b.serviceName);
@@ -614,3 +612,4 @@ export default function AdminBookingsPage() {
     </div>
   );
 }
+export default AdminBookingsPage;

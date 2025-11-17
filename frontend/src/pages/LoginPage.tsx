@@ -8,7 +8,7 @@ export interface LoginPageProps {
   onLogin: (token: string, role: "user" | "admin") => void;
 }
 
-export default function LoginPage({ onLogin }: LoginPageProps) {
+const LoginPage = ({ onLogin }: LoginPageProps) => {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -154,3 +154,5 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     </div>
   );
 }
+
+export default LoginPage;

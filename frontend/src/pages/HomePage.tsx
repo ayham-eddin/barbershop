@@ -17,7 +17,7 @@ import {
   EmptyBox,
 } from "../components/home/HomeSectionHelpers";
 
-export default function HomePage() {
+const HomePage = () => {
   const [role, setRole] = useState<"user" | "admin" | null>(null);
 
   useEffect(() => {
@@ -180,3 +180,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+export default HomePage;

@@ -20,7 +20,7 @@ function toISO(dtLocal: string): string {
   return d.toISOString();
 }
 
-export default function AdminTimeOffPage() {
+const AdminTimeOffPage = () => {
   const qc = useQueryClient();
 
   // Load barbers for select
@@ -234,3 +234,4 @@ export default function AdminTimeOffPage() {
     </div>
   );
 }
+export default AdminTimeOffPage;

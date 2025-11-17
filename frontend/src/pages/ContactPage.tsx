@@ -1,7 +1,7 @@
 // frontend/src/pages/ContactPage.tsx
 import { type FormEvent, useState } from 'react';
 
-export default function ContactPage() {
+const ContactPage = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -128,3 +128,5 @@ export default function ContactPage() {
     </section>
   );
 }
+
+export default ContactPage;

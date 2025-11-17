@@ -1,4 +1,3 @@
-// frontend/src/pages/BookingPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -18,7 +17,7 @@ import BookingSummaryDetails from '../components/booking/BookingSummaryDetails';
 
 type Barber = { _id: string; name: string };
 
-function todayYMD(): string {
+const todayYMD = (): string => {
   const d = new Date();
   const tz = 'Europe/Berlin';
   const yyyy = new Intl.DateTimeFormat('en-CA', {
@@ -38,14 +37,14 @@ function todayYMD(): string {
 
 const fmtTime = (iso: string) => formatBerlinTime(iso);
 
-function within7DaysBerlin(iso: string): boolean {
+const within7DaysBerlin = (iso: string): boolean => {
   const now = new Date();
   const t = new Date(iso);
   const diffMs = t.getTime() - now.getTime();
   return diffMs >= 0 && diffMs <= 7 * 24 * 60 * 60 * 1000;
 }
 
-export default function BookingPage() {
+const BookingPage = () => {
   const navigate = useNavigate();
 
   // 🚫 Prevent admin from using booking UI
@@ -128,7 +127,7 @@ export default function BookingPage() {
     });
   }, []);
 
-  async function handleCheck() {
+  const handleCheck = async () => {
     if (!barberId || !date || !durationMin) return;
 
     // Block weekends & NRW holidays on the client too
@@ -162,7 +161,7 @@ export default function BookingPage() {
     }
   }
 
-  async function handleConfirm() {
+  const handleConfirm = async () => {
     if (!selectedSlot || !barberId) return;
     setLoading(true);
     setFeedback(null);
@@ -187,14 +186,14 @@ export default function BookingPage() {
       // redirect after short delay
       setTimeout(() => navigate('/dashboard', { replace: true }), 2500);
     } catch (err) {
-      if (isBlockedError(err)) {
+      if (await isBlockedError(err)) {
         setFeedback({
           kind: 'err',
           text:
             'Your online booking is restricted due to repeated no-shows. Please call the barbershop to book.',
           reason: 'blocked',
         });
-      } else if (isWeeklyLimitError(err)) {
+      } else if (await isWeeklyLimitError(err)) {
         setFeedback({
           kind: 'err',
           text:
@@ -487,3 +486,5 @@ export default function BookingPage() {
     </section>
   );
 }
+
+export default BookingPage;

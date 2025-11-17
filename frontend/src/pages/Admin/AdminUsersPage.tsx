@@ -20,7 +20,7 @@ import AdminUsersTable, {
 
 type UsersResponse = { users: AdminUserRow[] };
 
-export default function AdminUsersPage() {
+const AdminUsersPage = () => {
   const qc = useQueryClient();
 
   const { data, isLoading, isError, refetch, isFetching } =
@@ -432,3 +432,5 @@ export default function AdminUsersPage() {
     </div>
   );
 }
+
+export default AdminUsersPage;
