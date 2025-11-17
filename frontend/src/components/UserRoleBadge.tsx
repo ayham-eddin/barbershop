@@ -1,5 +1,4 @@
-// frontend/src/components/UserRoleBadge.tsx
-export default function UserRoleBadge({ role }: { role: 'user' | 'admin' }) {
+const UserRoleBadge = ({ role }: { role: 'user' | 'admin' }) => {
   const cls =
     role === 'admin'
       ? 'bg-purple-100 text-purple-800 border-purple-200'
@@ -10,3 +9,5 @@ export default function UserRoleBadge({ role }: { role: 'user' | 'admin' }) {
     </span>
   );
 }
+
+export default UserRoleBadge;

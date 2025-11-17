@@ -1,4 +1,4 @@
-export function CountBadge({
+export const CountBadge = ({
   loading,
   count,
   label,
@@ -6,7 +6,7 @@ export function CountBadge({
   loading: boolean;
   count: number;
   label: string;
-}) {
+}) => {
   if (loading) {
     return (
       <span className="h-6 w-16 rounded-full bg-neutral-200 animate-pulse inline-block" />
@@ -20,7 +20,7 @@ export function CountBadge({
   );
 }
 
-export function ListSkeleton() {
+export const ListSkeleton = () => {
   return (
     <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
@@ -33,7 +33,7 @@ export function ListSkeleton() {
   );
 }
 
-export function ErrorBox({ text }: { text: string }) {
+export const ErrorBox = ({ text }: { text: string }) => {
   return (
     <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-800 px-4 py-3 text-sm">
       {text}
@@ -41,7 +41,7 @@ export function ErrorBox({ text }: { text: string }) {
   );
 }
 
-export function EmptyBox({ text }: { text: string }) {
+export const EmptyBox = ({ text }: { text: string }) => {
   return (
     <div className="rounded-xl border border-neutral-200 bg-white px-4 py-6 text-center text-neutral-600">
       {text}

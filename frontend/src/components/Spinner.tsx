@@ -4,11 +4,7 @@ type Props = {
   'aria-label'?: string;
 };
 
-/**
- * Minimal, accessible spinner (no Tailwind color hardcoding).
- * Inherit text color from parent; size via prop.
- */
-export default function Spinner({ size = 16, className = '', ...rest }: Props) {
+const Spinner = ({ size = 16, className = '', ...rest }: Props) => {
   const s = `${size}px`;
   return (
     <span
@@ -48,6 +44,7 @@ export default function Spinner({ size = 16, className = '', ...rest }: Props) {
   );
 }
 
+export default Spinner;
 
 // Usage example:
 

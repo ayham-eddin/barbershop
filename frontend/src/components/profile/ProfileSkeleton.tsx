@@ -1,4 +1,4 @@
-export default function ProfileSkeleton() {
+const ProfileSkeleton = () => {
   return (
     <div className="grid gap-3">
       {Array.from({ length: 4 }).map((_, i) => (
@@ -10,3 +10,4 @@ export default function ProfileSkeleton() {
     </div>
   );
 }
+export default ProfileSkeleton;

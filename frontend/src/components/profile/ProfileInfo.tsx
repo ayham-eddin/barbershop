@@ -5,7 +5,7 @@ type ProfileInfoItemProps = {
   value: ReactNode;
 };
 
-export function ProfileInfoItem({ label, value }: ProfileInfoItemProps) {
+export const ProfileInfoItem = ({ label, value }: ProfileInfoItemProps) => {
   return (
     <div>
       <dt className="text-xs uppercase tracking-wide text-neutral-500">
@@ -22,11 +22,11 @@ type ProfileBookingStatusProps = {
   blockReason: string | null;
 };
 
-export function ProfileBookingStatus({
+export const ProfileBookingStatus = ({
   isBlocked,
   warningCount,
   blockReason,
-}: ProfileBookingStatusProps) {
+}: ProfileBookingStatusProps) => {
   const badgeClasses = isBlocked
     ? "bg-rose-100 text-rose-800 border-rose-200"
     : "bg-emerald-100 text-emerald-800 border-emerald-200";

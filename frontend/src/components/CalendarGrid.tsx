@@ -33,15 +33,15 @@ export type CalendarGridProps = {
   onEmptySlotClick?: (dt: Date) => void;
 };
 
-function minutesBetween(a: Date, b: Date): number {
+const minutesBetween = (a: Date, b: Date): number => {
   return Math.max(0, Math.round((b.getTime() - a.getTime()) / 60000));
 }
 
-function clamp(n: number, min: number, max: number) {
+const clamp = (n: number, min: number, max: number) => {
   return Math.max(min, Math.min(max, n));
 }
 
-function isSameDay(a: Date, b: Date) {
+const isSameDay = (a: Date, b: Date) => {
   return (
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
@@ -53,7 +53,7 @@ function isSameDay(a: Date, b: Date) {
  * A simple day-view time grid. Each minute equals 1px for clarity.
  * (So a 10-hour window renders at 600px height.)
  */
-export default function CalendarGrid({
+const CalendarGrid =({
   bookings,
   startDate,
   endDate,
@@ -62,7 +62,7 @@ export default function CalendarGrid({
   subtitle,
   onEventClick,
   onEmptySlotClick,
-}: CalendarGridProps) {
+}: CalendarGridProps) => {
   const totalMinutes = useMemo(
     () => minutesBetween(startDate, endDate),
     [startDate, endDate]
@@ -219,3 +219,4 @@ export default function CalendarGrid({
     </div>
   );
 }
+export default CalendarGrid;

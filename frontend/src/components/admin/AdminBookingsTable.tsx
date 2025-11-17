@@ -40,7 +40,7 @@ interface AdminBookingsTableProps {
   onComplete: (id: string) => void;
 }
 
-export default function AdminBookingsTable({
+const AdminBookingsTable = ({
   bookings,
   isLoading,
   isError,
@@ -52,7 +52,7 @@ export default function AdminBookingsTable({
   onCancel,
   onNoShow,
   onComplete,
-}: AdminBookingsTableProps) {
+}: AdminBookingsTableProps) => {
   if (isError) {
     return (
       <div className="text-center text-rose-600 bg-rose-50 border border-rose-200 rounded-lg py-4">
@@ -207,3 +207,4 @@ export default function AdminBookingsTable({
     </div>
   );
 }
+export default AdminBookingsTable;

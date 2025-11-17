@@ -12,7 +12,7 @@ type BookingSummaryDetailsProps = {
   formatTime: (iso: string) => string;
 };
 
-export default function BookingSummaryDetails({
+const BookingSummaryDetails = ({
   barbers,
   barberId,
   serviceName,
@@ -22,7 +22,7 @@ export default function BookingSummaryDetails({
   price,
   notes,
   formatTime,
-}: BookingSummaryDetailsProps) {
+}: BookingSummaryDetailsProps) => {
   const barberName =
     barbers.find((b) => b._id === barberId)?.name ?? '—';
 
@@ -72,3 +72,4 @@ export default function BookingSummaryDetails({
     </dl>
   );
 }
+export default BookingSummaryDetails;

@@ -12,7 +12,7 @@ const STATUS_CLASS_MAP: Record<BookingStatus, string> = {
   no_show: 'bg-rose-100 text-rose-800 border-rose-200',
 };
 
-export default function StatusBadge({ status }: Props) {
+const StatusBadge = ({ status }: Props) => {
   return (
     <span
       className={`text-xs font-medium px-2 py-1 rounded-full border ${
@@ -23,3 +23,4 @@ export default function StatusBadge({ status }: Props) {
     </span>
   );
 }
+export default StatusBadge;

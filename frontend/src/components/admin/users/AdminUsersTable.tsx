@@ -22,7 +22,7 @@ interface AdminUsersTableProps {
   onUnblock: (id: string) => void;
 }
 
-export default function AdminUsersTable({
+const AdminUsersTable = ({
   rows,
   isLoading,
   isError,
@@ -31,7 +31,7 @@ export default function AdminUsersTable({
   onClearWarning,
   onBlock,
   onUnblock,
-}: AdminUsersTableProps) {
+}: AdminUsersTableProps) => {
   if (isLoading) {
     return (
       <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
@@ -155,3 +155,4 @@ export default function AdminUsersTable({
     </div>
   );
 }
+export default AdminUsersTable;

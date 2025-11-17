@@ -8,13 +8,13 @@ type SlotGridProps = {
   formatTime: (iso: string) => string;
 };
 
-export default function SlotGrid({
+const SlotGrid = ({
   slots,
   selectedSlot,
   loading,
   onSelect,
   formatTime,
-}: SlotGridProps) {
+}: SlotGridProps) => {
   if (loading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -62,3 +62,4 @@ export default function SlotGrid({
     </div>
   );
 }
+export default SlotGrid;

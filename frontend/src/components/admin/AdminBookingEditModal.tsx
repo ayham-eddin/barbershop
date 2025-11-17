@@ -31,7 +31,7 @@ type AdminBookingEditModalProps = {
   isSubmitting: boolean;
 };
 
-export default function AdminBookingEditModal({
+const AdminBookingEditModal = ({
   open,
   onClose,
   barbers,
@@ -47,7 +47,7 @@ export default function AdminBookingEditModal({
   onChangeNotes,
   onSubmit,
   isSubmitting,
-}: AdminBookingEditModalProps) {
+}: AdminBookingEditModalProps) => {
   return (
     <Modal open={open} title="Edit booking" onClose={onClose}>
       <form
@@ -138,3 +138,4 @@ export default function AdminBookingEditModal({
     </Modal>
   );
 }
+export default AdminBookingEditModal;

@@ -1,4 +1,4 @@
-export default function AdminTableSkeleton() {
+const AdminTableSkeleton = () => {
   return (
     <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm animate-pulse">
       {/* Header row skeleton */}
@@ -24,3 +24,4 @@ export default function AdminTableSkeleton() {
     </div>
   );
 }
+export default AdminTableSkeleton;

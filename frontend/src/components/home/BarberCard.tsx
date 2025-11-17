@@ -4,7 +4,7 @@ type Props = {
   barber: Barber;
 };
 
-export default function BarberCard({ barber }: Props) {
+const BarberCard = ({ barber }: Props) => {
   const initials = barber.name
     .split(" ")
     .map((x) => x[0])
@@ -30,3 +30,4 @@ export default function BarberCard({ barber }: Props) {
     </article>
   );
 }
+export default BarberCard;

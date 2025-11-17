@@ -2,7 +2,7 @@ type StatusBadgeProps = {
   status: string;
 };
 
-export default function StatusBadge({ status }: StatusBadgeProps) {
+const StatusBadge = ({ status }: StatusBadgeProps) => {
   const colors: Record<string, string> = {
     booked: "bg-amber-100 text-amber-800 border-amber-200",
     rescheduled: "bg-sky-100 text-sky-800 border-sky-200",
@@ -23,3 +23,5 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
     </span>
   );
 }
+
+export default StatusBadge;

@@ -2,7 +2,7 @@ type ErrorBoxProps = {
   text: string;
 };
 
-export function BookingsSkeleton() {
+export const BookingsSkeleton = () => {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {Array.from({ length: 4 }).map((_, i) => (
@@ -15,7 +15,7 @@ export function BookingsSkeleton() {
   );
 }
 
-export function ErrorBox({ text }: ErrorBoxProps) {
+export const ErrorBox = ({ text }: ErrorBoxProps) => {
   return (
     <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
       {text}
@@ -23,7 +23,7 @@ export function ErrorBox({ text }: ErrorBoxProps) {
   );
 }
 
-export function NoBookingsCard() {
+export const NoBookingsCard = () => {
   return (
     <div className="rounded-xl border border-neutral-200 bg-white px-4 py-6 text-center">
       <p className="text-neutral-600">No bookings yet.</p>

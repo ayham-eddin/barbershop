@@ -1,7 +1,6 @@
-// src/components/Toaster.tsx
 import { Toaster } from 'react-hot-toast';
 
-export default function AppToaster() {
+const AppToaster = () => {
   return (
     <Toaster
       position="bottom-right"
@@ -25,3 +24,5 @@ export default function AppToaster() {
     />
   );
 }
+
+export default AppToaster;

@@ -1,5 +1,4 @@
 import type { TimeOff } from "../../../api/timeoff";
-
 interface AdminTimeOffTableProps {
   items: TimeOff[];
   barberMap: Map<string, string>;
@@ -9,14 +8,14 @@ interface AdminTimeOffTableProps {
   onRemove: (id: string) => void;
 }
 
-export default function AdminTimeOffTable({
+const AdminTimeOffTable = ({
   items,
   barberMap,
   isLoading,
   isError,
   isRemoving,
   onRemove,
-}: AdminTimeOffTableProps) {
+}: AdminTimeOffTableProps) => {
   return (
     <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
       {isLoading ? (
@@ -83,3 +82,4 @@ export default function AdminTimeOffTable({
     </div>
   );
 }
+export default AdminTimeOffTable;

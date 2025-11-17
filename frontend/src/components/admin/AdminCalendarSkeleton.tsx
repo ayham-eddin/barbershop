@@ -1,4 +1,4 @@
-export default function AdminCalendarSkeleton() {
+const AdminCalendarSkeleton = () => {
   return (
     <div className="animate-pulse space-y-4">
       <div className="flex items-center justify-between">
@@ -12,3 +12,4 @@ export default function AdminCalendarSkeleton() {
     </div>
   );
 }
+export default AdminCalendarSkeleton;

@@ -8,7 +8,7 @@ interface NavbarProps {
   onLogout: () => void;
 }
 
-export default function Navbar({ token, role, onLogout }: NavbarProps) {
+const Navbar = ({ token, role, onLogout }: NavbarProps) => {
   const [open, setOpen] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
 
@@ -302,3 +302,5 @@ export default function Navbar({ token, role, onLogout }: NavbarProps) {
     </nav>
   );
 }
+
+export default Navbar;

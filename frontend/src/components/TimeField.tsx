@@ -1,4 +1,3 @@
-// src/components/TimeField.tsx
 import { useEffect, useState } from "react";
 
 interface TimeFieldProps {
@@ -12,12 +11,12 @@ interface TimeFieldProps {
  * A reusable date+time picker that stores local values but lets you
  * easily convert to ISO for backend use. It normalizes display to local time.
  */
-export default function TimeField({
+const TimeField = ({
   value,
   onChange,
   label = "Starts at",
   required = false,
-}: TimeFieldProps) {
+}: TimeFieldProps) => {
   const [localValue, setLocalValue] = useState("");
 
   // Convert ISO → local for display
@@ -51,3 +50,5 @@ export default function TimeField({
     </label>
   );
 }
+
+export default TimeField;

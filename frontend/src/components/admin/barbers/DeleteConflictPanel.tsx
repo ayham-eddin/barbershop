@@ -14,16 +14,16 @@ export type DeleteConflictState = {
   bookings: ConflictBooking[];
 };
 
-function isoToYmd(iso: string): string {
+const isoToYmd = (iso: string): string => {
   return iso.slice(0, 10);
-}
+};
 
 type Props = {
   conflict: DeleteConflictState;
   onClose: () => void;
 };
 
-export default function DeleteConflictPanel({ conflict, onClose }: Props) {
+const DeleteConflictPanel = ({ conflict, onClose }: Props) => {
   const { barberId, barberName, bookings } = conflict;
 
   return (
@@ -107,4 +107,6 @@ export default function DeleteConflictPanel({ conflict, onClose }: Props) {
       </div>
     </div>
   );
-}
+};
+
+export default DeleteConflictPanel;

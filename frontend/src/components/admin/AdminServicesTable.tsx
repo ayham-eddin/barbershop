@@ -16,7 +16,7 @@ interface AdminServicesTableProps {
   isDeleting: boolean;
 }
 
-export default function AdminServicesTable({
+const AdminServicesTable = ({
   services,
   isLoading,
   isError,
@@ -25,7 +25,7 @@ export default function AdminServicesTable({
   onDelete,
   isUpdating,
   isDeleting,
-}: AdminServicesTableProps) {
+}: AdminServicesTableProps) => {
   if (isLoading) {
     return (
       <div className="text-center text-neutral-500 py-12">
@@ -100,3 +100,4 @@ export default function AdminServicesTable({
     </div>
   );
 }
+export default AdminServicesTable;

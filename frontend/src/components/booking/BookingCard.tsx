@@ -12,13 +12,13 @@ type BookingCardProps = {
   canReschedule: boolean;
 };
 
-export default function BookingCard({
+const BookingCard =({
   booking,
   onCancel,
   onReschedule,
   cancelling,
   canReschedule,
-}: BookingCardProps) {
+}: BookingCardProps) => {
   const past = isPast(booking.startsAt);
   const canCancel =
     (booking.status === 'booked' || booking.status === 'rescheduled') && !past;
@@ -97,3 +97,4 @@ export default function BookingCard({
     </article>
   );
 }
+export default BookingCard;

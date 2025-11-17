@@ -9,15 +9,8 @@ interface ModalProps {
   footer?: ReactNode;
 }
 
-/**
- * Accessible modal dialog:
- * - ESC to close
- * - Click backdrop to close
- * - Focus is trapped inside dialog
- * - Background scroll disabled while open
- * - Restores previously focused element on close
- */
-export default function Modal({ open, title, onClose, children, footer }: ModalProps) {
+// A generic modal dialog component
+const Modal = ({ open, title, onClose, children, footer }: ModalProps) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastActiveRef = useRef<HTMLElement | null>(null);
 
@@ -131,3 +124,4 @@ export default function Modal({ open, title, onClose, children, footer }: ModalP
     </div>
   );
 }
+export default Modal;

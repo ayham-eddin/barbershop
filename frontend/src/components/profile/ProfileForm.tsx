@@ -15,11 +15,11 @@ type ProfileFormProps = {
 
 type Errors = Partial<Record<keyof ProfileFormValues, string>>;
 
-export default function ProfileForm({
+const ProfileForm = ({
   initialValues,
   isSubmitting,
   onSubmit,
-}: ProfileFormProps) {
+}: ProfileFormProps) => {
   const [values, setValues] = useState<ProfileFormValues>(initialValues);
   const [errors, setErrors] = useState<Errors>({});
 
@@ -193,3 +193,4 @@ export default function ProfileForm({
     </form>
   );
 }
+export default ProfileForm;

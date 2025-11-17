@@ -6,7 +6,7 @@ type Props = {
   role: "user" | "admin" | null;
 };
 
-export default function ServiceCard({ service, role }: Props) {
+const ServiceCard = ({ service, role }: Props) => {
   const isAdmin = role === "admin";
 
   return (
@@ -42,3 +42,4 @@ export default function ServiceCard({ service, role }: Props) {
     </article>
   );
 }
+export default ServiceCard;
