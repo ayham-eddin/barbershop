@@ -1,4 +1,12 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Link,
+} from 'react-router-dom';
+import { useState, useEffect, type ReactNode } from 'react';
+
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -12,18 +20,57 @@ import AdminBarbersPage from './pages/Admin/AdminBarbersPage';
 import ProfilePage from './pages/ProfilePage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
-import { useState, useEffect } from 'react';
+
+type Role = 'user' | 'admin' | null;
+
+/* --------------------------- Route guards --------------------------- */
+
+function RequireAuth({
+  token,
+  children,
+}: {
+  token: string | null;
+  children: ReactNode;
+}) {
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
+
+function RequireAdmin({
+  token,
+  role,
+  children,
+}: {
+  token: string | null;
+  role: Role;
+  children: ReactNode;
+}) {
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  if (role !== 'admin') {
+    // logged in but not admin → send to home
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
+/* ------------------------------- App ------------------------------- */
 
 export default function App() {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [role, setRole] = useState<'user' | 'admin' | null>(
-    (localStorage.getItem('role') as 'user' | 'admin' | null) || null,
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem('token'),
+  );
+  const [role, setRole] = useState<Role>(
+    (localStorage.getItem('role') as Role) || null,
   );
 
   useEffect(() => {
     const onStorage = () => {
       setToken(localStorage.getItem('token'));
-      setRole((localStorage.getItem('role') as 'user' | 'admin' | null) || null);
+      setRole((localStorage.getItem('role') as Role) || null);
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
@@ -43,55 +90,100 @@ export default function App() {
 
         <main className="max-w-6xl mx-auto px-6 py-10">
           <Routes>
+            {/* Public */}
             <Route path="/" element={<HomePage />} />
+
             <Route
               path="/login"
-              element={<LoginPage onLogin={(t, r) => { setToken(t); setRole(r); }} />}
+              element={
+                <LoginPage
+                  onLogin={(t, r) => {
+                    setToken(t);
+                    setRole(r);
+                  }}
+                />
+              }
             />
 
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+
+            {/* User-only */}
             <Route
               path="/book"
-              element={token ? <BookingPage /> : <Navigate to="/login" />}
+              element={
+                <RequireAuth token={token}>
+                  <BookingPage />
+                </RequireAuth>
+              }
             />
+
             <Route
               path="/dashboard"
-              element={token ? <DashboardPage /> : <Navigate to="/login" />}
+              element={
+                <RequireAuth token={token}>
+                  <DashboardPage />
+                </RequireAuth>
+              }
             />
+
             <Route
               path="/profile"
-              element={token ? <ProfilePage /> : <Navigate to="/login" />}
-            />
-            <Route 
-              path="/about" 
-              element={<AboutPage />} 
-            />
-            <Route 
-              path="/contact" 
-              element={<ContactPage />} 
+              element={
+                <RequireAuth token={token}>
+                  <ProfilePage />
+                </RequireAuth>
+              }
             />
 
+            {/* Admin-only */}
             <Route
               path="/admin/bookings"
-              element={token && role === 'admin' ? <AdminBookingsPage /> : <Navigate to="/login" />}
-            />
-            <Route
-              path="/admin/services"
-              element={token && role === 'admin' ? <AdminServicesPage /> : <Navigate to="/login" />}
-            />
-            <Route
-              path="/admin/barbers"
-              element={token && role === 'admin' ? <AdminBarbersPage /> : <Navigate to="/login" />}
-            />
-            <Route
-              path="/admin/users"
-              element={token && role === 'admin' ? <AdminUsersPage /> : <Navigate to="/login" />}
-            />
-            <Route
-              path="/admin/timeoff"
-              element={token && role === 'admin' ? <AdminTimeOffPage /> : <Navigate to="/login" />}
+              element={
+                <RequireAdmin token={token} role={role}>
+                  <AdminBookingsPage />
+                </RequireAdmin>
+              }
             />
 
-            <Route path="*" element={<Navigate to="/" />} />
+            <Route
+              path="/admin/services"
+              element={
+                <RequireAdmin token={token} role={role}>
+                  <AdminServicesPage />
+                </RequireAdmin>
+              }
+            />
+
+            <Route
+              path="/admin/barbers"
+              element={
+                <RequireAdmin token={token} role={role}>
+                  <AdminBarbersPage />
+                </RequireAdmin>
+              }
+            />
+
+            <Route
+              path="/admin/users"
+              element={
+                <RequireAdmin token={token} role={role}>
+                  <AdminUsersPage />
+                </RequireAdmin>
+              }
+            />
+
+            <Route
+              path="/admin/timeoff"
+              element={
+                <RequireAdmin token={token} role={role}>
+                  <AdminTimeOffPage />
+                </RequireAdmin>
+              }
+            />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
 
@@ -112,7 +204,8 @@ export default function App() {
               </Link>
             </div>
             <p>
-              © {new Date().getFullYear()} BarberBooking. Crafted with ✂️ and care.
+              © {new Date().getFullYear()} Ayham Eddin. Crafted with ✂️ and
+              care.
             </p>
           </div>
         </footer>

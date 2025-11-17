@@ -6,36 +6,32 @@ import {
   adminBlockUser,
   adminClearWarning,
 } from "../../api/bookings";
-import { getAdminUser, updateAdminUser, type AdminUser } from "../../api/adminUsers";
+import {
+  getAdminUser,
+  updateAdminUser,
+  type AdminUser,
+} from "../../api/adminUsers";
 import toast from "react-hot-toast";
 import { errorMessage } from "../../lib/errors";
 import Modal from "../../components/Modal";
-import UserRoleBadge from "../../components/UserRoleBadge";
+import AdminUsersTable, {
+  type AdminUserRow,
+} from "../../components/admin/users/AdminUsersTable";
 
-type UserRow = {
-  _id: string;
-  name: string;
-  email: string;
-  role: "user" | "admin";
-  warning_count?: number;
-  last_warning_at?: string;
-  is_online_booking_blocked?: boolean;
-  block_reason?: string;
-};
-
-type UsersResponse = { users: UserRow[] };
+type UsersResponse = { users: AdminUserRow[] };
 
 export default function AdminUsersPage() {
   const qc = useQueryClient();
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery<UsersResponse>({
-    queryKey: ["admin-users"],
-    queryFn: async () => {
-      const res = await api.get("/api/admin/users");
-      return res.data as UsersResponse;
-    },
-    staleTime: 5_000,
-  });
+  const { data, isLoading, isError, refetch, isFetching } =
+    useQuery<UsersResponse>({
+      queryKey: ["admin-users"],
+      queryFn: async () => {
+        const res = await api.get("/api/admin/users");
+        return res.data as UsersResponse;
+      },
+      staleTime: 5_000,
+    });
 
   const rows = data?.users ?? [];
 
@@ -69,7 +65,7 @@ export default function AdminUsersPage() {
     }
   }, [selectedUser]);
 
-  const onRowClick = (u: UserRow) => {
+  const onRowClick = (u: AdminUserRow) => {
     setSelectedId(u._id);
     setDetailsOpen(true);
   };
@@ -83,8 +79,10 @@ export default function AdminUsersPage() {
       if (prev) {
         qc.setQueryData<UsersResponse>(["admin-users"], {
           ...prev,
-          users: prev.users.map(u =>
-            u._id === id ? { ...u, is_online_booking_blocked: false, block_reason: "" } : u
+          users: prev.users.map((u) =>
+            u._id === id
+              ? { ...u, is_online_booking_blocked: false, block_reason: "" }
+              : u,
           ),
         });
       }
@@ -110,10 +108,14 @@ export default function AdminUsersPage() {
       if (prev) {
         qc.setQueryData<UsersResponse>(["admin-users"], {
           ...prev,
-          users: prev.users.map(u =>
+          users: prev.users.map((u) =>
             u._id === id
-              ? { ...u, is_online_booking_blocked: true, block_reason: reason ?? "" }
-              : u
+              ? {
+                  ...u,
+                  is_online_booking_blocked: true,
+                  block_reason: reason ?? "",
+                }
+              : u,
           ),
         });
       }
@@ -138,10 +140,13 @@ export default function AdminUsersPage() {
       if (prev) {
         qc.setQueryData<UsersResponse>(["admin-users"], {
           ...prev,
-          users: prev.users.map(u =>
+          users: prev.users.map((u) =>
             u._id === id
-              ? { ...u, warning_count: Math.max(0, (u.warning_count ?? 0) - 1) }
-              : u
+              ? {
+                  ...u,
+                  warning_count: Math.max(0, (u.warning_count ?? 0) - 1),
+                }
+              : u,
           ),
         });
       }
@@ -164,37 +169,39 @@ export default function AdminUsersPage() {
       const payload = {
         name: form.name?.trim() || undefined,
         email: form.email?.trim() || undefined,
-        role: form.role, // 'user' | 'admin' | undefined (ok)
+        role: form.role, // 'user' | 'admin' | undefined
         phone: form.phone?.toString().trim() || undefined,
         address: form.address?.toString().trim() || undefined,
-        // send undefined when empty; backend tolerates undefined and has its own empty→undefined handling
         avatarUrl: form.avatarUrl?.toString().trim() || undefined,
         is_online_booking_blocked: form.is_online_booking_blocked,
-        // IMPORTANT: don't send null; undefined means “no change”
         block_reason: form.block_reason?.toString().trim() || undefined,
       };
       return updateAdminUser(selectedId, payload);
     },
     onMutate: async () => {
-      if (!selectedId) return { prevList: undefined };
+      if (!selectedId) return { prevList: undefined as UsersResponse | undefined };
       await qc.cancelQueries({ queryKey: ["admin-users"] });
       const prevList = qc.getQueryData<UsersResponse>(["admin-users"]);
       if (prevList) {
         qc.setQueryData<UsersResponse>(["admin-users"], {
           ...prevList,
-          users: prevList.users.map(u =>
+          users: prevList.users.map((u) =>
             u._id === selectedId
               ? {
                   ...u,
                   name: form.name?.trim() || u.name,
                   email: form.email?.trim() || u.email,
-                  role: (form.role as 'user' | 'admin' | undefined) ?? u.role,
+                  role:
+                    (form.role as "user" | "admin" | undefined) ?? u.role,
                   is_online_booking_blocked:
-                    form.is_online_booking_blocked ?? u.is_online_booking_blocked,
+                    form.is_online_booking_blocked ??
+                    u.is_online_booking_blocked,
                   block_reason:
-                    (form.block_reason?.toString().trim() || u.block_reason || "") || undefined,
+                    (form.block_reason?.toString().trim() ||
+                      u.block_reason ||
+                      "") || undefined,
                 }
-              : u
+              : u,
           ),
         });
       }
@@ -214,7 +221,27 @@ export default function AdminUsersPage() {
   });
 
   const isWorking =
-    unblock.isPending || block.isPending || clearWarning.isPending || saveDetails.isPending;
+    unblock.isPending ||
+    block.isPending ||
+    clearWarning.isPending ||
+    saveDetails.isPending;
+
+  /* ------------------------------ handlers for table ------------------------------ */
+
+  const handleClearWarning = (id: string, warnings: number) => {
+    if (warnings === 0 || isWorking) return;
+    clearWarning.mutate(id);
+  };
+
+  const handleBlock = (id: string) => {
+    if (isWorking) return;
+    block.mutate({ id, reason: undefined });
+  };
+
+  const handleUnblock = (id: string) => {
+    if (isWorking) return;
+    unblock.mutate(id);
+  };
 
   /* ------------------------------ UI ------------------------------ */
   return (
@@ -230,103 +257,16 @@ export default function AdminUsersPage() {
         </button>
       </div>
 
-      {isLoading && (
-        <div className="text-center text-neutral-500 py-12">Loading…</div>
-      )}
-
-      {isError && (
-        <div className="text-center text-rose-600 bg-rose-50 border border-rose-200 rounded-lg py-4">
-          Failed to load users. Try again later.
-        </div>
-      )}
-
-      {!isLoading && !isError && (
-        <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
-          <table className="min-w-full text-sm text-left">
-            <thead className="bg-neutral-100 text-neutral-700 uppercase text-xs">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Warnings</th>
-                <th className="px-4 py-3">Blocked</th>
-                <th className="px-4 py-3">Reason</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((u) => {
-                const blocked = !!u.is_online_booking_blocked;
-                const warnings = u.warning_count ?? 0;
-                return (
-                  <tr
-                    key={u._id}
-                    className="border-t border-neutral-100 hover:bg-neutral-50 transition cursor-pointer"
-                    onClick={() => onRowClick(u)}
-                  >
-                    <td className="px-4 py-3">{u.name}</td>
-                    <td className="px-4 py-3 text-neutral-700">{u.email}</td>
-                    <td className="px-4 py-3"><UserRoleBadge role={u.role} /></td>
-                    <td className="px-4 py-3">{warnings}</td>
-                    <td className="px-4 py-3">
-                      {blocked ? (
-                        <span className="rounded-full border px-2 py-0.5 text-xs bg-rose-100 border-rose-200 text-rose-700">
-                          blocked
-                        </span>
-                      ) : (
-                        <span className="rounded-full border px-2 py-0.5 text-xs bg-green-100 border-green-200 text-green-700">
-                          ok
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-600">
-                      {u.block_reason ?? "—"}
-                    </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-2">
-                        <button
-                          disabled={warnings === 0 || isWorking}
-                          onClick={() => clearWarning.mutate(u._id)}
-                          className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-                          title={warnings === 0 ? "No warnings to remove" : "Remove one warning"}
-                        >
-                          Remove warning
-                        </button>
-                        {!blocked ? (
-                          <button
-                            disabled={isWorking}
-                            onClick={() => block.mutate({ id: u._id, reason: undefined })}
-                            className="rounded-md border border-amber-300 px-3 py-1.5 hover:bg-amber-50"
-                            title="Block user"
-                          >
-                            Block
-                          </button>
-                        ) : (
-                          <button
-                            disabled={!blocked || isWorking}
-                            onClick={() => unblock.mutate(u._id)}
-                            className="rounded-md bg-neutral-900 text-white px-3 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-                            title="Unblock user"
-                          >
-                            {unblock.isPending ? "Working…" : "Unblock"}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-neutral-500">
-                    No users found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <AdminUsersTable
+        rows={rows}
+        isLoading={isLoading}
+        isError={isError}
+        isWorking={isWorking}
+        onRowClick={onRowClick}
+        onClearWarning={handleClearWarning}
+        onBlock={handleBlock}
+        onUnblock={handleUnblock}
+      />
 
       {/* Details/Edit Modal */}
       <Modal
@@ -355,7 +295,9 @@ export default function AdminUsersPage() {
                 <input
                   type="text"
                   value={form.name ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
                   required
                 />
@@ -365,7 +307,9 @@ export default function AdminUsersPage() {
                 <input
                   type="email"
                   value={form.email ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, email: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
                   required
                 />
@@ -374,7 +318,12 @@ export default function AdminUsersPage() {
                 Role
                 <select
                   value={form.role ?? "user"}
-                  onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as 'user' | 'admin' }))}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      role: e.target.value as "user" | "admin",
+                    }))
+                  }
                   className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
                 >
                   <option value="user">user</option>
@@ -386,7 +335,9 @@ export default function AdminUsersPage() {
                 <input
                   type="text"
                   value={form.phone ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, phone: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
                 />
               </label>
@@ -395,7 +346,9 @@ export default function AdminUsersPage() {
                 <input
                   type="text"
                   value={form.address ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, address: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
                 />
               </label>
@@ -404,7 +357,9 @@ export default function AdminUsersPage() {
                 <input
                   type="url"
                   value={form.avatarUrl ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, avatarUrl: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, avatarUrl: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
                 />
               </label>
@@ -414,17 +369,24 @@ export default function AdminUsersPage() {
                   type="checkbox"
                   checked={!!form.is_online_booking_blocked}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, is_online_booking_blocked: e.target.checked }))
+                    setForm((f) => ({
+                      ...f,
+                      is_online_booking_blocked: e.target.checked,
+                    }))
                   }
                 />
-                <span className="text-sm text-neutral-800">Blocked from online booking</span>
+                <span className="text-sm text-neutral-800">
+                  Blocked from online booking
+                </span>
               </label>
               <label className="block text-sm font-medium text-neutral-700 sm:col-span-2">
                 Block reason (optional)
                 <input
                   type="text"
                   value={form.block_reason ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, block_reason: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, block_reason: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
                   placeholder="e.g., repeated no-shows"
                   maxLength={300}
@@ -434,8 +396,14 @@ export default function AdminUsersPage() {
 
             <div className="flex justify-between items-center pt-2">
               <div className="text-xs text-neutral-500">
-                Created: {new Date(selectedUser.createdAt ?? '').toLocaleString() || '—'} · Updated:{" "}
-                {new Date(selectedUser.updatedAt ?? '').toLocaleString() || '—'}
+                Created:{" "}
+                {selectedUser.createdAt
+                  ? new Date(selectedUser.createdAt).toLocaleString()
+                  : "—"}{" "}
+                · Updated:{" "}
+                {selectedUser.updatedAt
+                  ? new Date(selectedUser.updatedAt).toLocaleString()
+                  : "—"}
               </div>
               <div className="flex gap-2">
                 <button
