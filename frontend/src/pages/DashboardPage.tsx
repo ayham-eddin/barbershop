@@ -13,6 +13,11 @@ import Modal from '../components/Modal';
 import TimeField from '../components/TimeField';
 import BookingCard from '../components/booking/BookingCard';
 import { isActive, isPast } from '../utils/bookings';
+import {
+  BookingsSkeleton,
+  ErrorBox,
+  NoBookingsCard,
+} from '../components/booking/BookingsStates';
 
 export default function DashboardPage() {
   const qc = useQueryClient();
@@ -38,6 +43,7 @@ export default function DashboardPage() {
     mutationFn: (id: string) => cancelBooking(id),
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: ['me', 'bookings'] });
+
       const prev = qc.getQueryData<Booking[]>(['me', 'bookings']);
       if (prev) {
         qc.setQueryData<Booking[]>(
@@ -64,12 +70,14 @@ export default function DashboardPage() {
 
   function openReschedule(b: Booking) {
     setEditId(b._id);
-    // prefill from current values
+
+    // prefill from current values (local datetime string)
     const d = new Date(b.startsAt);
     const pad = (n: number) => String(n).padStart(2, '0');
     const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
       d.getDate(),
     )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
     setEditStartsAtLocal(local);
     setEditOpen(true);
   }
@@ -77,6 +85,7 @@ export default function DashboardPage() {
   const rescheduleMut = useMutation({
     mutationFn: async () => {
       if (!editId) return null;
+
       const startsAt = editStartsAtLocal
         ? new Date(editStartsAtLocal).toISOString()
         : undefined;
@@ -99,6 +108,8 @@ export default function DashboardPage() {
     },
   });
 
+  const hasBookings = data && data.length > 0;
+
   return (
     <section className="space-y-6">
       <header>
@@ -109,52 +120,22 @@ export default function DashboardPage() {
       </header>
 
       {/* ⚠️ Warning or block banners */}
-      {me?.is_online_booking_blocked && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
-          ⚠️ Your online booking is restricted due to repeated no-shows. Please call the
-          barbershop to book in person.
-        </div>
-      )}
+      <WarningBanners me={me} />
 
-      {!me?.is_online_booking_blocked && (me?.warning_count ?? 0) > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 px-4 py-3 text-sm">
-          ⚠️ You have {me?.warning_count ?? 0} warning
-          {(me?.warning_count ?? 0) > 1 ? 's' : ''} for missed appointments.
-        </div>
-      )}
-
-      {isLoading && (
-        <div className="grid gap-4 md:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-24 rounded-xl bg-neutral-200 animate-pulse"
-            />
-          ))}
-        </div>
-      )}
+      {/* States */}
+      {isLoading && <BookingsSkeleton />}
 
       {isError && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
-          Couldn’t load bookings. Please refresh.
-        </div>
+        <ErrorBox text="Couldn’t load bookings. Please refresh." />
       )}
 
-      {data && data.length === 0 && (
-        <div className="rounded-xl border border-neutral-200 bg-white px-4 py-6 text-center">
-          <p className="text-neutral-600">No bookings yet.</p>
-          <a
-            href="/book"
-            className="inline-flex mt-3 rounded-lg bg-amber-400 text-neutral-900 font-semibold px-4 py-2 hover:bg-amber-300 transition"
-          >
-            Book your first appointment
-          </a>
-        </div>
+      {!isLoading && !isError && data && data.length === 0 && (
+        <NoBookingsCard />
       )}
 
-      {data && data.length > 0 && (
+      {hasBookings && (
         <div className="grid gap-4 md:grid-cols-2">
-          {data
+          {data!
             .slice()
             .sort(
               (a, b) =>
@@ -191,9 +172,8 @@ export default function DashboardPage() {
               Cancel
             </button>
             <button
-              type="button"
+              type="submit"
               disabled={rescheduleMut.isPending}
-              onClick={() => rescheduleMut.mutate()}
               className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
             >
               {rescheduleMut.isPending ? 'Saving…' : 'Save changes'}
@@ -218,4 +198,30 @@ export default function DashboardPage() {
       </Modal>
     </section>
   );
+}
+
+/* ---------------------------- Small helpers ---------------------------- */
+
+function WarningBanners({ me }: { me: Awaited<ReturnType<typeof getMe>> | undefined }) {
+  if (!me) return null;
+
+  if (me.is_online_booking_blocked) {
+    return (
+      <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
+        ⚠️ Your online booking is restricted due to repeated no-shows. Please call the
+        barbershop to book in person.
+      </div>
+    );
+  }
+
+  const warnings = me.warning_count ?? 0;
+  if (warnings > 0) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 px-4 py-3 text-sm">
+        ⚠️ You have {warnings} warning{warnings > 1 ? 's' : ''} for missed appointments.
+      </div>
+    );
+  }
+
+  return null;
 }
