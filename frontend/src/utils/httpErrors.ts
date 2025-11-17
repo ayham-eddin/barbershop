@@ -1,9 +1,9 @@
 import type { AxiosError } from "axios";
 
-export function extractErrorMessage(
+export const extractErrorMessage = (
   err: unknown,
   fallback = "Request failed",
-): string {
+): string => {
   if (typeof err === "string") return err;
 
   if (err && typeof err === "object") {

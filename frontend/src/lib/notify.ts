@@ -1,10 +1,9 @@
-// src/lib/notify.ts
 import toast from 'react-hot-toast';
 import type { AxiosError } from 'axios';
 
 type ApiErrorData = { error?: string; message?: string };
 
-export function messageFromError(err: unknown): string {
+export const messageFromError = (err: unknown): string => {
   if (typeof err === 'string') return err;
   if (err instanceof Error) return err.message;
 

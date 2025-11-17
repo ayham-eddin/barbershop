@@ -1,8 +1,7 @@
-// src/lib/errors.ts
 import type { AxiosError } from 'axios';
 
 /** Build a human-friendly message from unknown/axios errors */
-export function errorMessage(err: unknown): string {
+export const errorMessage = (err: unknown): string => {
   if (typeof err === 'string') return err;
 
   if (err && typeof err === 'object') {

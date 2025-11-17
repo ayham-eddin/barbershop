@@ -1,12 +1,11 @@
-// src/utils/closedDaysNRW.ts
 
 /** Pad to 2 digits. */
-function pad2(n: number): string {
+const pad2 = (n: number): string => {
   return n.toString().padStart(2, '0');
 }
 
 // Meeus/Jones/Butcher algorithm – returns Easter Sunday (UTC)
-function easterSundayUtc(year: number): Date {
+const easterSundayUtc = (year: number): Date => {
   const a = year % 19;
   const b = Math.floor(year / 100);
   const c = year % 100;
@@ -24,14 +23,14 @@ function easterSundayUtc(year: number): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-function ymdFromDateUtc(d: Date): string {
+const ymdFromDateUtc = (d: Date): string => {
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(
     d.getUTCDate(),
   )}`;
 }
 
 // Returns a set of YYYY-MM-DD strings for NRW public holidays in a year
-function nrwHolidaySet(year: number): Set<string> {
+const nrwHolidaySet = (year: number): Set<string> => {
   const dates: string[] = [];
 
   const add = (month: number, day: number) => {
@@ -67,7 +66,7 @@ function nrwHolidaySet(year: number): Set<string> {
  * Check if a YYYY-MM-DD date is weekend or NRW public holiday.
  * Used by booking / reschedule flows.
  */
-export function isClosedDateYmd(ymd: string): boolean {
+export const isClosedDateYmd = (ymd: string): boolean => {
   if (!ymd) return false;
   const [yStr, mStr, dStr] = ymd.split('-');
   const year = Number(yStr);
