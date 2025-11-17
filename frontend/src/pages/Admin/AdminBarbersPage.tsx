@@ -1,10 +1,14 @@
 // frontend/src/pages/Admin/AdminBarbersPage.tsx
-import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
-import api from '../../api/client';
-import Modal from '../../components/Modal';
-import { formatBerlin } from '../../utils/datetime';
+import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import api from "../../api/client";
+import Modal from "../../components/Modal";
+import { extractErrorMessage } from "../../utils/httpErrors";
+import DeleteConflictPanel, {
+  type ConflictBooking,
+  type DeleteConflictState,
+} from "../../components/admin/barbers/DeleteConflictPanel";
 
 type WorkingHour = {
   day: number; // 0-6
@@ -24,41 +28,26 @@ type Barber = {
 
 type AdminListResponse = { barbers: Barber[] };
 
-// For the “cannot delete; future bookings” box
-type ConflictBooking = {
-  id: string;
-  startsAt: string;
-  serviceName: string;
-  userName?: string;
-  userEmail?: string;
-};
-
-type DeleteConflictState = {
-  barberId: string;
-  barberName: string;
-  bookings: ConflictBooking[];
-};
-
 // Default schedule: Mon–Fri 09:00–17:00
 const DEFAULT_WORKING_HOURS: WorkingHour[] = [
-  { day: 1, start: '09:00', end: '17:00' },
-  { day: 2, start: '09:00', end: '17:00' },
-  { day: 3, start: '09:00', end: '17:00' },
-  { day: 4, start: '09:00', end: '17:00' },
-  { day: 5, start: '09:00', end: '17:00' },
+  { day: 1, start: "09:00", end: "17:00" },
+  { day: 2, start: "09:00", end: "17:00" },
+  { day: 3, start: "09:00", end: "17:00" },
+  { day: 4, start: "09:00", end: "17:00" },
+  { day: 5, start: "09:00", end: "17:00" },
 ];
 
 const DAY_ORDER: number[] = [1, 2, 3, 4, 5, 6, 0];
 
 function weekdayLabel(day: number): string {
   const map: Record<number, string> = {
-    0: 'Sun',
-    1: 'Mon',
-    2: 'Tue',
-    3: 'Wed',
-    4: 'Thu',
-    5: 'Fri',
-    6: 'Sat',
+    0: "Sun",
+    1: "Mon",
+    2: "Tue",
+    3: "Wed",
+    4: "Thu",
+    5: "Fri",
+    6: "Sat",
   };
   return map[day] ?? String(day);
 }
@@ -68,9 +57,9 @@ export default function AdminBarbersPage() {
 
   // ---- load list ----
   const { data, isLoading, isError, refetch } = useQuery<AdminListResponse>({
-    queryKey: ['adminBarbers'],
+    queryKey: ["adminBarbers"],
     queryFn: async () => {
-      const res = await api.get('/api/admin/barbers');
+      const res = await api.get("/api/admin/barbers");
       return res.data as AdminListResponse;
     },
     staleTime: 5_000,
@@ -79,15 +68,15 @@ export default function AdminBarbersPage() {
   const barbers = useMemo<Barber[]>(() => data?.barbers ?? [], [data]);
 
   // ---- create form state ----
-  const [name, setName] = useState('');
-  const [specialtiesInput, setSpecialtiesInput] = useState('');
+  const [name, setName] = useState("");
+  const [specialtiesInput, setSpecialtiesInput] = useState("");
   const [active, setActive] = useState(true);
 
   // ---- edit modal state ----
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editSpecialtiesInput, setEditSpecialtiesInput] = useState('');
+  const [editName, setEditName] = useState("");
+  const [editSpecialtiesInput, setEditSpecialtiesInput] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [editWorkingHours, setEditWorkingHours] = useState<WorkingHour[]>([]);
 
@@ -98,7 +87,7 @@ export default function AdminBarbersPage() {
   function openEdit(b: Barber) {
     setEditId(b._id);
     setEditName(b.name);
-    setEditSpecialtiesInput(b.specialties.join(', '));
+    setEditSpecialtiesInput(b.specialties.join(", "));
     setEditActive(b.active);
     setEditWorkingHours(b.workingHours ?? []);
     setEditOpen(true);
@@ -109,37 +98,13 @@ export default function AdminBarbersPage() {
     setEditId(null);
   }
 
-  const errorMessage = (e: unknown) => {
-    const def = 'Request failed';
-    if (typeof e === 'string') return e;
-    if (e && typeof e === 'object' && 'response' in e) {
-      const ax = e as {
-        response?: { data?: { error?: string; message?: string } };
-        message?: string;
-      };
-      return (
-        ax.response?.data?.error ??
-        ax.response?.data?.message ??
-        ax.message ??
-        def
-      );
-    }
-    if (e && typeof e === 'object' && 'error' in e) {
-      const data = e as { error?: string; message?: string };
-      return data.error ?? data.message ?? def;
-    }
-    return def;
-  };
-
   /* ─────────────── helpers ─────────────── */
 
   const parseSpecialties = (val: string) =>
     val
-      .split(',')
+      .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-
-  const isoToYmd = (iso: string) => iso.slice(0, 10);
 
   // working-hour helpers for edit modal
   function setDayEnabled(day: number, enabled: boolean) {
@@ -150,9 +115,9 @@ export default function AdminBarbersPage() {
         return [
           ...prev,
           {
-            day: day as WorkingHour['day'],
-            start: '09:00',
-            end: '17:00',
+            day: day as WorkingHour["day"],
+            start: "09:00",
+            end: "17:00",
           },
         ];
       }
@@ -160,21 +125,19 @@ export default function AdminBarbersPage() {
     });
   }
 
-  function updateDayField(day: number, field: 'start' | 'end', value: string) {
+  function updateDayField(day: number, field: "start" | "end", value: string) {
     setEditWorkingHours((prev) => {
       const exists = prev.find((w) => w.day === day);
       if (!exists) {
         // auto-enable day if user starts typing a time
         const base: WorkingHour = {
-          day: day as WorkingHour['day'],
-          start: field === 'start' ? value : '09:00',
-          end: field === 'end' ? value : '17:00',
+          day: day as WorkingHour["day"],
+          start: field === "start" ? value : "09:00",
+          end: field === "end" ? value : "17:00",
         };
         return [...prev, base];
       }
-      return prev.map((w) =>
-        w.day === day ? { ...w, [field]: value } : w,
-      );
+      return prev.map((w) => (w.day === day ? { ...w, [field]: value } : w));
     });
   }
 
@@ -186,8 +149,8 @@ export default function AdminBarbersPage() {
     const block = editWorkingHours.find((w) => w.day === day);
     return {
       enabled: !!block,
-      start: block?.start ?? '09:00',
-      end: block?.end ?? '17:00',
+      start: block?.start ?? "09:00",
+      end: block?.end ?? "17:00",
     };
   }
 
@@ -200,24 +163,24 @@ export default function AdminBarbersPage() {
       active: boolean;
       workingHours: WorkingHour[];
     }) => {
-      const res = await api.post('/api/admin/barbers', payload);
+      const res = await api.post("/api/admin/barbers", payload);
       return res.data as { barber: Barber };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['adminBarbers'] }).catch(() => {});
-      setName('');
-      setSpecialtiesInput('');
+      qc.invalidateQueries({ queryKey: ["adminBarbers"] }).catch(() => {});
+      setName("");
+      setSpecialtiesInput("");
       setActive(true);
-      toast.success('Barber created.');
+      toast.success("Barber created.");
     },
-    onError: (err) => toast.error(errorMessage(err)),
+    onError: (err) => toast.error(extractErrorMessage(err)),
   });
 
   const updateMut = useMutation({
     mutationFn: async (payload: {
       id: string;
       patch: Partial<
-        Pick<Barber, 'name' | 'specialties' | 'active' | 'workingHours'>
+        Pick<Barber, "name" | "specialties" | "active" | "workingHours">
       >;
     }) => {
       const res = await api.patch(
@@ -227,10 +190,10 @@ export default function AdminBarbersPage() {
       return res.data as { barber: Barber };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['adminBarbers'] }).catch(() => {});
-      toast.success('Barber updated.');
+      qc.invalidateQueries({ queryKey: ["adminBarbers"] }).catch(() => {});
+      toast.success("Barber updated.");
     },
-    onError: (err) => toast.error(errorMessage(err)),
+    onError: (err) => toast.error(extractErrorMessage(err)),
   });
 
   const deleteMut = useMutation({
@@ -239,16 +202,16 @@ export default function AdminBarbersPage() {
       return res.data as { deleted: Barber };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['adminBarbers'] }).catch(() => {});
+      qc.invalidateQueries({ queryKey: ["adminBarbers"] }).catch(() => {});
       setDeleteConflict(null);
-      toast.success('Barber deleted.');
+      toast.success("Barber deleted.");
     },
     onError: (err) => {
       // Try to normalize error shape:
       const maybeData =
         (err as { response?: { data?: unknown } })?.response?.data ?? err;
 
-      if (maybeData && typeof maybeData === 'object') {
+      if (maybeData && typeof maybeData === "object") {
         const data = maybeData as {
           conflict_type?: string;
           barberId?: string;
@@ -264,32 +227,31 @@ export default function AdminBarbersPage() {
           }>;
         };
 
-        if (data.conflict_type === 'future_bookings') {
+        if (data.conflict_type === "future_bookings") {
           const bookings: ConflictBooking[] = (data.bookings ?? [])
             .filter((b) => Boolean(b.startsAt))
             .map((b) => ({
-              id: String(b.id ?? b._id ?? ''),
+              id: String(b.id ?? b._id ?? ""),
               startsAt: String(b.startsAt),
-              serviceName: b.serviceName ?? 'Booking',
+              serviceName: b.serviceName ?? "Booking",
               userName: b.userName ?? b.user?.name,
               userEmail: b.userEmail ?? b.user?.email,
             }));
 
           setDeleteConflict({
-            barberId: data.barberId ?? '',
-            barberName: data.barberName ?? 'This barber',
+            barberId: data.barberId ?? "",
+            barberName: data.barberName ?? "This barber",
             bookings,
           });
 
-          toast.error('Cannot delete barber with future bookings.');
+          toast.error("Cannot delete barber with future bookings.");
           return;
         }
       }
 
       // Fallback generic error
-      toast.error(errorMessage(err));
-
-      console.log('DELETE BARBER ERROR 👉', err);
+      toast.error(extractErrorMessage(err));
+      console.log("DELETE BARBER ERROR 👉", err);
     },
   });
 
@@ -297,7 +259,7 @@ export default function AdminBarbersPage() {
 
   const onSubmitCreate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error('Name is required.');
+    if (!name.trim()) return toast.error("Name is required.");
     createMut.mutate({
       name: name.trim(),
       specialties: parseSpecialties(specialtiesInput),
@@ -310,7 +272,7 @@ export default function AdminBarbersPage() {
   const onSubmitEdit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editId) return;
-    if (!editName.trim()) return toast.error('Name is required.');
+    if (!editName.trim()) return toast.error("Name is required.");
 
     // normalize working hours (drop disabled days, sort)
     const normalizedWH: WorkingHour[] = editWorkingHours
@@ -395,7 +357,7 @@ export default function AdminBarbersPage() {
           className="rounded-lg bg-amber-400 text-neutral-900 font-semibold px-4 py-2 hover:bg-amber-300 transition"
           disabled={createMut.isPending}
         >
-          {createMut.isPending ? 'Adding…' : 'Add Barber'}
+          {createMut.isPending ? "Adding…" : "Add Barber"}
         </button>
       </form>
 
@@ -431,7 +393,7 @@ export default function AdminBarbersPage() {
                       {b.name}
                     </td>
                     <td className="px-4 py-3 text-neutral-600">
-                      {b.specialties.length ? b.specialties.join(', ') : '—'}
+                      {b.specialties.length ? b.specialties.join(", ") : "—"}
                     </td>
                     <td className="px-4 py-3 text-neutral-600 align-top">
                       {b.workingHours && b.workingHours.length ? (
@@ -446,24 +408,24 @@ export default function AdminBarbersPage() {
                               >
                                 <span className="font-medium">
                                   {weekdayLabel(wh.day)}
-                                </span>{' '}
+                                </span>{" "}
                                 {wh.start}–{wh.end}
                               </span>
                             ))}
                         </div>
                       ) : (
-                        'Not set'
+                        "Not set"
                       )}
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border ${
                           b.active
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-neutral-50 text-neutral-600 border-neutral-200'
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-neutral-50 text-neutral-600 border-neutral-200"
                         }`}
                       >
-                        {b.active ? 'Active' : 'Inactive'}
+                        {b.active ? "Active" : "Inactive"}
                       </span>
                     </td>
                     <td className="px-4 py-3 space-x-2">
@@ -477,7 +439,7 @@ export default function AdminBarbersPage() {
                         className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
                         disabled={updateMut.isPending}
                       >
-                        {b.active ? 'Set inactive' : 'Set active'}
+                        {b.active ? "Set inactive" : "Set active"}
                       </button>
                       <button
                         onClick={() => openEdit(b)}
@@ -513,96 +475,18 @@ export default function AdminBarbersPage() {
 
           {/* Conflict box when delete fails because of future bookings */}
           {deleteConflict && (
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-amber-900">
-                    Cannot delete {deleteConflict.barberName}
-                  </h2>
-                  <p className="mt-1 text-xs text-amber-800">
-                    This barber still has {deleteConflict.bookings.length}{' '}
-                    future booking
-                    {deleteConflict.bookings.length === 1 ? '' : 's'}. Set them
-                    inactive, or update / cancel the bookings below.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDeleteConflict(null)}
-                  className="rounded-full border border-amber-300 px-2 py-1 text-xs text-amber-800 hover:bg-amber-100"
-                >
-                  Close
-                </button>
-              </div>
-
-              <div className="rounded-lg bg-white border border-amber-100 max-h-60 overflow-y-auto">
-                <table className="min-w-full text-xs text-left">
-                  <thead className="bg-amber-50 text-amber-900 uppercase">
-                    <tr>
-                      <th className="px-3 py-2">Date</th>
-                      <th className="px-3 py-2">Customer</th>
-                      <th className="px-3 py-2">Service</th>
-                      <th className="px-3 py-2 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {deleteConflict.bookings.map((b) => (
-                      <tr key={b.id} className="border-t border-amber-100">
-                        <td className="px-3 py-2 text-neutral-800">
-                          {formatBerlin(b.startsAt)}
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-neutral-900">
-                              {b.userName ?? '—'}
-                            </span>
-                            {b.userEmail && (
-                              <span className="text-[11px] text-neutral-500">
-                                {b.userEmail}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-neutral-800">
-                          {b.serviceName}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <a
-                            href={`/admin/bookings?barberId=${encodeURIComponent(
-                              deleteConflict.barberId,
-                            )}&date=${encodeURIComponent(
-                              isoToYmd(b.startsAt),
-                            )}`}
-                            className="inline-flex items-center rounded-full border border-amber-300 px-3 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-50"
-                          >
-                            Open in bookings
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {deleteConflict.bookings.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={4}
-                          className="px-3 py-4 text-center text-neutral-500"
-                        >
-                          No upcoming bookings found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <DeleteConflictPanel
+              conflict={deleteConflict}
+              onClose={() => setDeleteConflict(null)}
+            />
           )}
         </>
       )}
 
       {/* Edit modal */}
-      <Modal 
-        open={editOpen} 
-        title="Edit barber" 
+      <Modal
+        open={editOpen}
+        title="Edit barber"
         onClose={closeEdit}
         footer={
           <div className="flex justify-end gap-2 pt-2">
@@ -615,15 +499,20 @@ export default function AdminBarbersPage() {
             </button>
             <button
               type="submit"
+              form="edit-barber-form"
               className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
               disabled={updateMut.isPending}
             >
-              {updateMut.isPending ? 'Saving…' : 'Save changes'}
+              {updateMut.isPending ? "Saving…" : "Save changes"}
             </button>
           </div>
         }
+      >
+        <form
+          id="edit-barber-form"
+          onSubmit={onSubmitEdit}
+          className="space-y-3"
         >
-        <form onSubmit={onSubmitEdit} className="space-y-3">
           <label className="block text-sm font-medium text-neutral-700">
             Name
             <input
@@ -669,10 +558,7 @@ export default function AdminBarbersPage() {
               {DAY_ORDER.map((day) => {
                 const cfg = getDayConfig(day);
                 return (
-                  <div
-                    key={day}
-                    className="flex items-center gap-2 text-sm"
-                  >
+                  <div key={day} className="flex items-center gap-2 text-sm">
                     <label className="flex items-center gap-2 min-w-[80px]">
                       <input
                         type="checkbox"
@@ -690,7 +576,7 @@ export default function AdminBarbersPage() {
                       type="time"
                       value={cfg.start}
                       onChange={(e) =>
-                        updateDayField(day, 'start', e.target.value)
+                        updateDayField(day, "start", e.target.value)
                       }
                       disabled={!cfg.enabled}
                       className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-xs disabled:bg-neutral-100"
@@ -700,7 +586,7 @@ export default function AdminBarbersPage() {
                       type="time"
                       value={cfg.end}
                       onChange={(e) =>
-                        updateDayField(day, 'end', e.target.value)
+                        updateDayField(day, "end", e.target.value)
                       }
                       disabled={!cfg.enabled}
                       className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-xs disabled:bg-neutral-100"
