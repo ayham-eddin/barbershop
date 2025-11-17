@@ -1,4 +1,3 @@
-// frontend/src/api/timeoff.ts
 import api from './client';
 
 export type TimeOff = {
@@ -11,24 +10,25 @@ export type TimeOff = {
   updatedAt?: string;
 };
 
-export async function listTimeOff(params: { barberId?: string } = {}) {
-  const { data } = await api.get<{ timeoff: TimeOff[] }>('/api/admin/timeoff', {
+export const listTimeOff = async (params: { barberId?: string } = {}) => {
+   const { data } = await api.get<{ timeoff: TimeOff[] }>('/api/admin/timeoff', {
     params: params.barberId ? { barberId: params.barberId } : undefined,
   });
-  return data.timeoff;
+  return data.timeoff; 
 }
 
-export async function createTimeOff(payload: {
-  barberId: string;
-  start: string; // ISO
-  end: string;   // ISO
-  reason?: string;
-}) {
-  const { data } = await api.post<{ timeoff: TimeOff }>('/api/admin/timeoff', payload);
-  return data.timeoff;
+export const createTimeOff = async (
+  payload: {
+    barberId: string;
+    start: string; // ISO
+    end: string;   // ISO
+    reason?: string;
+}) => {
+   const { data } = await api.post<{ timeoff: TimeOff }>('/api/admin/timeoff', payload);
+  return data.timeoff; 
 }
 
-export async function deleteTimeOff(id: string) {
-  const { data } = await api.delete<{ deleted: TimeOff }>(`/api/admin/timeoff/${id}`);
-  return data.deleted;
+export const deleteTimeOff = async (id: string) => {
+   const { data } = await api.delete<{ deleted: TimeOff }>(`/api/admin/timeoff/${id}`);
+  return data.deleted; 
 }

@@ -1,4 +1,3 @@
-// frontend/src/api/me.ts
 import api from './client';
 
 export type MeUser = {
@@ -15,7 +14,7 @@ export type MeUser = {
   avatarUrl: string | null;
 };
 
-export async function getMe() {
+export const getMe = async () => {
   const { data } = await api.get<{ user: MeUser }>('/api/auth/me');
   return data.user;
 }
@@ -29,15 +28,21 @@ export type UpdateMePayload = Partial<{
 }>;
 
 /** Remove keys with null/undefined so backend only receives provided fields */
-function pruneNulls<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
+export const pruneNulls = <T extends Record<string, unknown>>(
+  obj: T
+): Record<string, unknown> => {
   const out: Record<string, unknown> = {};
+
   for (const [k, v] of Object.entries(obj)) {
-    if (v !== null && v !== undefined) out[k] = v;
+    if (v !== null && v !== undefined) {
+      out[k] = v;
+    }
   }
   return out;
-}
+};
 
-export async function updateMe(payload: UpdateMePayload) {
+
+export const updateMe = async (payload: UpdateMePayload) => {
   const wire = pruneNulls(payload);
   const { data } = await api.patch<{ user: MeUser }>('/api/auth/me', wire);
   return data.user;

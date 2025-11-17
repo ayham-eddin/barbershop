@@ -11,12 +11,12 @@ export interface AuthResponse {
   token: string;
 }
 
-export async function login(email: string, password: string): Promise<AuthResponse> {
+export const login = async (email: string, password: string): Promise<AuthResponse>  => {
   const res = await api.post<AuthResponse>('/api/auth/login', { email, password });
   return res.data;
 }
 
-export async function register(name: string, email: string, password: string): Promise<AuthResponse> {
+export const register = async (name: string, email: string, password: string) => {
   const res = await api.post<AuthResponse>('/api/auth/register', { name, email, password });
   return res.data;
 }
