@@ -79,9 +79,9 @@ describe('Booking – auth & validation', () => {
     // 2) User logs in
     const userToken = await registerAndLogin('u2@example.com', 'secret123');
 
-    // 3) Fetch slots for a known Thursday (matches the rest of the suite)
+    // 3) Fetch slots for a far-future Thursday so it's never "in the past"
     const slotsRes = await api.get(`/api/barbers/${barberId}/slots`)
-      .query({ date: '2025-10-30', duration: 30 })
+      .query({ date: '2050-10-27', duration: 30 })
       .expect(200);
 
     expect(isSlotsOut(slotsRes.body)).toBe(true);
