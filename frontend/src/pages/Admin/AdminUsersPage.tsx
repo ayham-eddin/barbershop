@@ -82,7 +82,7 @@ const AdminUsersPage = () => {
           users: prev.users.map((u) =>
             u._id === id
               ? { ...u, is_online_booking_blocked: false, block_reason: "" }
-              : u,
+              : u
           ),
         });
       }
@@ -115,7 +115,7 @@ const AdminUsersPage = () => {
                   is_online_booking_blocked: true,
                   block_reason: reason ?? "",
                 }
-              : u,
+              : u
           ),
         });
       }
@@ -146,7 +146,7 @@ const AdminUsersPage = () => {
                   ...u,
                   warning_count: Math.max(0, (u.warning_count ?? 0) - 1),
                 }
-              : u,
+              : u
           ),
         });
       }
@@ -179,7 +179,8 @@ const AdminUsersPage = () => {
       return updateAdminUser(selectedId, payload);
     },
     onMutate: async () => {
-      if (!selectedId) return { prevList: undefined as UsersResponse | undefined };
+      if (!selectedId)
+        return { prevList: undefined as UsersResponse | undefined };
       await qc.cancelQueries({ queryKey: ["admin-users"] });
       const prevList = qc.getQueryData<UsersResponse>(["admin-users"]);
       if (prevList) {
@@ -191,17 +192,17 @@ const AdminUsersPage = () => {
                   ...u,
                   name: form.name?.trim() || u.name,
                   email: form.email?.trim() || u.email,
-                  role:
-                    (form.role as "user" | "admin" | undefined) ?? u.role,
+                  role: (form.role as "user" | "admin" | undefined) ?? u.role,
                   is_online_booking_blocked:
                     form.is_online_booking_blocked ??
                     u.is_online_booking_blocked,
                   block_reason:
-                    (form.block_reason?.toString().trim() ||
-                      u.block_reason ||
-                      "") || undefined,
+                    form.block_reason?.toString().trim() ||
+                    u.block_reason ||
+                    "" ||
+                    undefined,
                 }
-              : u,
+              : u
           ),
         });
       }
@@ -278,11 +279,35 @@ const AdminUsersPage = () => {
             setSelectedId(null);
           }
         }}
+        footer={
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setDetailsOpen(false);
+                setSelectedId(null);
+              }}
+              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+              disabled={isWorking}
+            >
+              Close
+            </button>
+            <button
+              type="submit"
+              form="edit-user-form"
+              disabled={saveDetails.isPending}
+              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
+            >
+              {saveDetails.isPending ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        }
       >
         {!selectedUser ? (
           <div className="text-sm text-neutral-600">Loading…</div>
         ) : (
           <form
+            id="edit-user-form"
             className="space-y-3"
             onSubmit={(e) => {
               e.preventDefault();
@@ -405,32 +430,12 @@ const AdminUsersPage = () => {
                   ? new Date(selectedUser.updatedAt).toLocaleString()
                   : "—"}
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDetailsOpen(false);
-                    setSelectedId(null);
-                  }}
-                  className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
-                  disabled={isWorking}
-                >
-                  Close
-                </button>
-                <button
-                  type="submit"
-                  disabled={saveDetails.isPending}
-                  className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-                >
-                  {saveDetails.isPending ? "Saving…" : "Save changes"}
-                </button>
-              </div>
             </div>
           </form>
         )}
       </Modal>
     </div>
   );
-}
+};
 
 export default AdminUsersPage;

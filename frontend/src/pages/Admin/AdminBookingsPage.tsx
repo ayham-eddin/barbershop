@@ -10,10 +10,7 @@ import api from "../../api/client";
 import { patchAdminBooking } from "../../api/adminBookings";
 import toast from "react-hot-toast";
 import { errorMessage } from "../../lib/errors";
-import {
-  localInputToUtcIso,
-  isoToLocalInput,
-} from "../../utils/datetime";
+import { localInputToUtcIso, isoToLocalInput } from "../../utils/datetime";
 import { adminMarkNoShow } from "../../api/bookings";
 import CalendarGrid, {
   type Booking as CalBooking,
@@ -60,6 +57,13 @@ interface Barber {
   name: string;
 }
 
+interface AdminService {
+  _id: string;
+  name: string;
+  durationMin: number;
+  price: number;
+}
+
 /* ------------------------- Date helpers -------------------------- */
 
 const ymd = (d: Date) => {
@@ -67,12 +71,13 @@ const ymd = (d: Date) => {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
-}
+};
+
 const addDays = (d: Date, n: number) => {
   const c = new Date(d);
   c.setDate(c.getDate() + n);
   return c;
-}
+};
 
 /* ========================= Component ============================= */
 
@@ -128,7 +133,7 @@ const AdminBookingsPage = () => {
     setViewDate(d);
     setListFrom(d);
     setListTo(d);
-  }
+  };
 
   // ---------- Derived start/end for calendar ----------
   const startDate = useMemo(
@@ -136,20 +141,20 @@ const AdminBookingsPage = () => {
       new Date(
         `${ymd(viewDate)}T${String(workingHours.startHour).padStart(
           2,
-          "0"
-        )}:00:00`
+          "0",
+        )}:00:00`,
       ),
-    [viewDate, workingHours.startHour]
+    [viewDate, workingHours.startHour],
   );
   const endDate = useMemo(
     () =>
       new Date(
         `${ymd(viewDate)}T${String(workingHours.endHour).padStart(
           2,
-          "0"
-        )}:00:00`
+          "0",
+        )}:00:00`,
       ),
-    [viewDate, workingHours.endHour]
+    [viewDate, workingHours.endHour],
   );
 
   // barbers for dropdown/edit
@@ -163,8 +168,20 @@ const AdminBookingsPage = () => {
 
   const selectedBarber = useMemo(
     () => barbers.find((b) => b._id === barberId) ?? null,
-    [barbers, barberId]
+    [barbers, barberId],
   );
+
+  // services for edit modal select
+  const { data: servicesData } = useQuery<{ services: AdminService[] }>({
+    queryKey: ["adminServicesForBookings"],
+    queryFn: async () => {
+      const res = await api.get("/api/admin/services");
+      return res.data as { services: AdminService[] };
+    },
+    staleTime: 30_000,
+  });
+
+  const services: AdminService[] = servicesData?.services ?? [];
 
   // ---------- Query string for admin bookings ----------
   const queryString = useMemo(() => {
@@ -197,7 +214,7 @@ const AdminBookingsPage = () => {
 
   const bookings: AdminBooking[] = useMemo(
     () => data?.bookings ?? [],
-    [data]
+    [data],
   );
   const curPage = data?.page ?? page;
   const totalPages = data?.pages ?? 1;
@@ -220,7 +237,7 @@ const AdminBookingsPage = () => {
         qc.setQueryData<AdminResponse>(qKey, {
           ...prev,
           bookings: prev.bookings.map((b) =>
-            b._id === id ? { ...b, status: "cancelled" } : b
+            b._id === id ? { ...b, status: "cancelled" } : b,
           ),
         });
       }
@@ -246,7 +263,7 @@ const AdminBookingsPage = () => {
         qc.setQueryData<AdminResponse>(qKey, {
           ...prev,
           bookings: prev.bookings.map((b) =>
-            b._id === id ? { ...b, status: "completed" } : b
+            b._id === id ? { ...b, status: "completed" } : b,
           ),
         });
       }
@@ -269,7 +286,7 @@ const AdminBookingsPage = () => {
         qc.setQueryData<AdminResponse>(qKey, {
           ...prev,
           bookings: prev.bookings.map((b) =>
-            b._id === id ? { ...b, status: "no_show" } : b
+            b._id === id ? { ...b, status: "no_show" } : b,
           ),
         });
       }
@@ -296,12 +313,25 @@ const AdminBookingsPage = () => {
   const openEdit = (b: AdminBooking) => {
     setEditId(b._id);
     setEditBarberId(b.barber?.id ?? "");
-    setEditServiceName(b.serviceName);
-    setEditDurationMin(b.durationMin);
+
+    // make sure we always have a service name that matches an option if possible
+    const matchedService =
+      services.find((s) => s.name === b.serviceName) ?? null;
+    const initialServiceName =
+      matchedService?.name ?? b.serviceName ?? services[0]?.name ?? "";
+    const initialDuration =
+      matchedService?.durationMin ??
+      b.durationMin ??
+      services.find((s) => s.name === initialServiceName)?.durationMin ??
+      30;
+
+    setEditServiceName(initialServiceName);
+    setEditDurationMin(initialDuration);
+
     setEditStartsAtLocal(isoToLocalInput(b.startsAt));
     setEditNotes(b.notes ?? "");
     setEditOpen(true);
-  }
+  };
 
   const patchMutation = useMutation({
     mutationFn: async () => {
@@ -314,8 +344,7 @@ const AdminBookingsPage = () => {
       if (startsAt) patch.startsAt = startsAt;
       if (Number.isFinite(editDurationMin)) patch.durationMin = editDurationMin;
       if (editBarberId) patch.barberId = editBarberId;
-      if (editServiceName.trim())
-        patch.serviceName = editServiceName.trim();
+      if (editServiceName.trim()) patch.serviceName = editServiceName.trim();
       if (editNotes.trim()) patch.notes = editNotes.trim();
 
       return patchAdminBooking(editId, patch);
@@ -350,7 +379,7 @@ const AdminBookingsPage = () => {
           status: b.status,
           label: b.serviceName,
         })),
-    [bookings, viewDate]
+    [bookings, viewDate],
   );
 
   const today = new Date();
@@ -534,7 +563,7 @@ const AdminBookingsPage = () => {
         </div>
       )}
 
-      {/* Table + pagination (moved to component) */}
+      {/* Table + pagination */}
       <AdminBookingsTable
         bookings={bookings}
         isLoading={isLoading}
@@ -568,18 +597,35 @@ const AdminBookingsPage = () => {
               }}
               onEmptySlotClick={(dt) => {
                 const sameDayBookings = bookings.filter(
-                  (b) => b.startsAt.slice(0, 10) === ymd(viewDate)
+                  (b) => b.startsAt.slice(0, 10) === ymd(viewDate),
                 );
 
                 const seed =
                   sameDayBookings.find(
-                    (b) => barberId && b.barber?.id === barberId
+                    (b) => barberId && b.barber?.id === barberId,
                   ) ?? sameDayBookings[0];
+
+                const matchedService =
+                  services.find((s) => s.name === seed?.serviceName) ?? null;
 
                 setEditId(seed?._id ?? null);
                 setEditBarberId(barberId || seed?.barber?.id || "");
-                setEditServiceName(seed?.serviceName ?? "");
-                setEditDurationMin(seed?.durationMin ?? 30);
+
+                const initialServiceName =
+                  matchedService?.name ??
+                  seed?.serviceName ??
+                  services[0]?.name ??
+                  "";
+                const initialDuration =
+                  matchedService?.durationMin ??
+                  seed?.durationMin ??
+                  services.find((s) => s.name === initialServiceName)
+                    ?.durationMin ??
+                  30;
+
+                setEditServiceName(initialServiceName);
+                setEditDurationMin(initialDuration);
+
                 setEditStartsAtLocal(isoToLocalInput(dt.toISOString()));
                 setEditNotes("");
                 setEditOpen(true);
@@ -594,6 +640,7 @@ const AdminBookingsPage = () => {
         open={editOpen}
         onClose={() => setEditOpen(false)}
         barbers={barbers}
+        services={services}
         startsAtLocal={editStartsAtLocal}
         onChangeStartsAtLocal={setEditStartsAtLocal}
         durationMin={editDurationMin}
@@ -611,5 +658,6 @@ const AdminBookingsPage = () => {
       />
     </div>
   );
-}
+};
+
 export default AdminBookingsPage;

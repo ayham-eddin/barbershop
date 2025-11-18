@@ -217,8 +217,35 @@ const AdminServicesPage = () => {
       />
 
       {/* Edit modal */}
-      <Modal open={editOpen} title="Edit service" onClose={closeEdit} footer={<></>}>
-        <form onSubmit={onSubmitEdit} className="space-y-3">
+      <Modal 
+        open={editOpen} 
+        title="Edit service" 
+        onClose={closeEdit} 
+        footer={
+        <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+              onClick={closeEdit}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="edit-service-form"
+              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
+              disabled={updateMut.isPending}
+            >
+              {updateMut.isPending ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        }
+      >
+        <form 
+          id="edit-service-form"
+          onSubmit={onSubmitEdit} 
+          className="space-y-3"
+        >
           <label className="block text-sm font-medium text-neutral-700">
             Name
             <input
@@ -255,23 +282,6 @@ const AdminServicesPage = () => {
               required
             />
           </label>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
-              onClick={closeEdit}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-              disabled={updateMut.isPending}
-            >
-              {updateMut.isPending ? "Saving…" : "Save changes"}
-            </button>
-          </div>
         </form>
       </Modal>
     </div>

@@ -173,6 +173,7 @@ const DashboardPage = () => {
             </button>
             <button
               type="submit"
+              form="edit-booking-form"
               disabled={rescheduleMut.isPending}
               className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
             >
@@ -182,6 +183,7 @@ const DashboardPage = () => {
         }
       >
         <form
+          id="edit-booking-form"
           onSubmit={(e) => {
             e.preventDefault();
             rescheduleMut.mutate();

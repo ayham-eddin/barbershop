@@ -6,11 +6,18 @@ export type BarberOption = {
   name: string;
 };
 
+export type ServiceOption = {
+  _id: string;
+  name: string;
+  durationMin: number;
+};
+
 type AdminBookingEditModalProps = {
   open: boolean;
   onClose: () => void;
 
   barbers: BarberOption[];
+  services: ServiceOption[];
 
   startsAtLocal: string;
   onChangeStartsAtLocal: (value: string) => void;
@@ -35,6 +42,7 @@ const AdminBookingEditModal = ({
   open,
   onClose,
   barbers,
+  services,
   startsAtLocal,
   onChangeStartsAtLocal,
   durationMin,
@@ -48,9 +56,43 @@ const AdminBookingEditModal = ({
   onSubmit,
   isSubmitting,
 }: AdminBookingEditModalProps) => {
+  const handleServiceChange = (value: string) => {
+    onChangeServiceName(value);
+    const svc = services.find((s) => s.name === value);
+    if (svc && typeof svc.durationMin === "number") {
+      onChangeDurationMin(svc.durationMin);
+    }
+  };
+
+  const hasCurrentInOptions = services.some((s) => s.name === serviceName);
+
   return (
-    <Modal open={open} title="Edit booking" onClose={onClose}>
+    <Modal
+      open={open}
+      title="Edit booking"
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="edit-admin-booking-form"
+            disabled={isSubmitting}
+            className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
+          >
+            {isSubmitting ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      }
+    >
       <form
+        id="edit-admin-booking-form"
         onSubmit={(e) => {
           e.preventDefault();
           onSubmit();
@@ -97,14 +139,32 @@ const AdminBookingEditModal = ({
         </label>
 
         <label className="block text-sm font-medium text-neutral-700">
-          Service name
-          <input
-            type="text"
-            value={serviceName}
-            onChange={(e) => onChangeServiceName(e.target.value)}
+          Service
+          <select
+            value={serviceName || ""}
+            onChange={(e) => handleServiceChange(e.target.value)}
             className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-            required
-          />
+          >
+            {/* Placeholder if nothing selected yet */}
+            {!serviceName && (
+              <option value="" disabled>
+                Select service…
+              </option>
+            )}
+            {services.map((s) => (
+              <option key={s._id} value={s.name}>
+                {s.name}
+              </option>
+            ))}
+            {/* Fallback option when the booking has a name not in the current services list */}
+            {serviceName && !hasCurrentInOptions && (
+              <option value={serviceName}>{serviceName} (current)</option>
+            )}
+          </select>
+          <p className="mt-1 text-xs text-neutral-500">
+            Changing the service will also update the duration to the default
+            for that service.
+          </p>
         </label>
 
         <label className="block text-sm font-medium text-neutral-700">
@@ -117,25 +177,9 @@ const AdminBookingEditModal = ({
             placeholder="Optional note for this booking"
           />
         </label>
-
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-          >
-            {isSubmitting ? "Saving…" : "Save changes"}
-          </button>
-        </div>
       </form>
     </Modal>
   );
-}
+};
+
 export default AdminBookingEditModal;
