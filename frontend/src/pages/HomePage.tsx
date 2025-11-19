@@ -54,16 +54,18 @@ const HomePage = () => {
         <div className="absolute -top-10 -right-10 h-48 w-48 rounded-full bg-amber-500/20 blur-2xl" />
         <div className="absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-amber-400/10 blur-2xl" />
 
-        <div className="relative p-10 md:p-14">
-          <h1 className="text-3xl md:text-5xl font-semibold tracking-tight">
-            Look sharp. Book fast.
-          </h1>
-          <p className="mt-4 text-neutral-300 max-w-xl">
-            Choose your barber, pick a service, and reserve your spot in
-            seconds — all online.
-          </p>
+        <div className="relative px-6 py-10 md:px-10 md:py-14">
+          <div className="max-w-3xl space-y-4 text-center md:text-left">
+            <h1 className="text-3xl md:text-5xl font-semibold tracking-tight">
+              Look sharp. Book fast.
+            </h1>
+            <p className="text-neutral-300 md:text-lg">
+              Choose your barber, pick a service, and reserve your spot in
+              seconds — all online.
+            </p>
+          </div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-4">
+          <div className="mt-8 flex flex-wrap items-center gap-3 md:gap-4">
             {role !== "admin" ? (
               <Link
                 to="/book"
@@ -179,6 +181,6 @@ const HomePage = () => {
       </section>
     </div>
   );
-}
+};
 
 export default HomePage;

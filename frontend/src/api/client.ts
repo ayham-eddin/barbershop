@@ -1,36 +1,18 @@
+// src/api/client.ts
 import axios, {
   AxiosError,
   type InternalAxiosRequestConfig,
 } from 'axios';
 
-let consoleErrorSpy: jest.SpyInstance;
-
-beforeAll(() => {
-  consoleErrorSpy = jest
-    .spyOn(console, 'error')
-    .mockImplementation((...args: unknown[]) => {
-      const [first] = args;
-
-      // Ignore jsdom navigation not implemented noise
-      if (
-        typeof first === 'string' &&
-        first.includes('Not implemented: navigation')
-      ) {
-        return;
-      }
-    });
-});
-
-afterAll(() => {
-  consoleErrorSpy.mockRestore();
-});
+type EnvLike = { VITE_API_URL?: string };
 
 const readEnvBase = (): string | undefined => {
   try {
     if (typeof process !== 'undefined') {
-      const env = (process as { env?: { VITE_API_URL?: string } }).env;
-      if (env && typeof env.VITE_API_URL === 'string') {
-        return env.VITE_API_URL;
+      const env = (process as { env?: EnvLike }).env;
+      const value = env?.VITE_API_URL;
+      if (typeof value === 'string') {
+        return value;
       }
     }
   } catch {

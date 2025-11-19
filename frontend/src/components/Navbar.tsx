@@ -1,4 +1,3 @@
-// src/components/Navbar.tsx
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 
@@ -80,6 +79,8 @@ const Navbar = ({ token, role, onLogout }: NavbarProps) => {
                   type="button"
                   onClick={() => setAdminMenuOpen((o) => !o)}
                   className="inline-flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                  aria-haspopup="true"
+                  aria-expanded={adminMenuOpen}
                 >
                   Admin
                   <span className="text-xs">{adminMenuOpen ? "▲" : "▼"}</span>
@@ -173,6 +174,7 @@ const Navbar = ({ token, role, onLogout }: NavbarProps) => {
               setAdminMenuOpen(false);
             }}
             aria-label="Toggle navigation"
+            aria-expanded={open}
           >
             {open ? (
               <span className="text-lg leading-none">✕</span>
@@ -190,21 +192,21 @@ const Navbar = ({ token, role, onLogout }: NavbarProps) => {
             {/* Public main links */}
             <NavLink
               to="/"
-              className={makeNavClass}
+              className={(p) => makeNavClass(p) + " block py-1.5"}
               onClick={() => setOpen(false)}
             >
               Home
             </NavLink>
             <NavLink
               to="/about"
-              className={makeNavClass}
+              className={(p) => makeNavClass(p) + " block py-1.5"}
               onClick={() => setOpen(false)}
             >
               About
             </NavLink>
             <NavLink
               to="/contact"
-              className={makeNavClass}
+              className={(p) => makeNavClass(p) + " block py-1.5"}
               onClick={() => setOpen(false)}
             >
               Contact
@@ -214,7 +216,7 @@ const Navbar = ({ token, role, onLogout }: NavbarProps) => {
             {isUser && (
               <NavLink
                 to="/dashboard"
-                className={makeNavClass}
+                className={(p) => makeNavClass(p) + " block py-1.5"}
                 onClick={() => setOpen(false)}
               >
                 My Bookings
@@ -229,35 +231,35 @@ const Navbar = ({ token, role, onLogout }: NavbarProps) => {
                 </span>
                 <NavLink
                   to="/admin/bookings"
-                  className={makeNavClass}
+                  className={(p) => makeNavClass(p) + " block py-1.5"}
                   onClick={() => setOpen(false)}
                 >
                   Bookings
                 </NavLink>
                 <NavLink
                   to="/admin/services"
-                  className={makeNavClass}
+                  className={(p) => makeNavClass(p) + " block py-1.5"}
                   onClick={() => setOpen(false)}
                 >
                   Services
                 </NavLink>
                 <NavLink
                   to="/admin/barbers"
-                  className={makeNavClass}
+                  className={(p) => makeNavClass(p) + " block py-1.5"}
                   onClick={() => setOpen(false)}
                 >
                   Barbers
                 </NavLink>
                 <NavLink
                   to="/admin/users"
-                  className={makeNavClass}
+                  className={(p) => makeNavClass(p) + " block py-1.5"}
                   onClick={() => setOpen(false)}
                 >
                   Users
                 </NavLink>
                 <NavLink
                   to="/admin/timeoff"
-                  className={makeNavClass}
+                  className={(p) => makeNavClass(p) + " block py-1.5"}
                   onClick={() => setOpen(false)}
                 >
                   Time off
@@ -269,7 +271,7 @@ const Navbar = ({ token, role, onLogout }: NavbarProps) => {
             {token && (
               <NavLink
                 to="/profile"
-                className={makeNavClass}
+                className={(p) => makeNavClass(p) + " block py-1.5"}
                 onClick={() => setOpen(false)}
               >
                 Profile
@@ -278,7 +280,7 @@ const Navbar = ({ token, role, onLogout }: NavbarProps) => {
             {!token && (
               <NavLink
                 to="/login"
-                className={makeNavClass}
+                className={(p) => makeNavClass(p) + " block py-1.5"}
                 onClick={() => setOpen(false)}
               >
                 Login
@@ -301,6 +303,6 @@ const Navbar = ({ token, role, onLogout }: NavbarProps) => {
       )}
     </nav>
   );
-}
+};
 
 export default Navbar;
