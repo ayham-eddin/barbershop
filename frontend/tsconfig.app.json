@@ -5,7 +5,8 @@
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "types": ["vite/client", "jest"],
+
+    "types": ["vite/client", "jest", "node"],
     "skipLibCheck": true,
 
     /* Bundler mode */
@@ -15,6 +16,9 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+
+    /* ESM interop – also removes some ts-jest warnings */
+    "esModuleInterop": true,
 
     /* Linting */
     "strict": true,

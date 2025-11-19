@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    // Jest/ts-jest work best with CommonJS output
+    "module": "CommonJS",
+
+    // Use classic Node-style resolution for tests
+    "moduleResolution": "node",
+
+    // Disable verbatimModuleSyntax so TS is fine with CJS-style emit
+    "verbatimModuleSyntax": false,
+
+    // Keep JSX consistent
+    "jsx": "react-jsx",
+
+    // Test environment types
+    "types": ["jest", "node", "jsdom"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ]
+}
