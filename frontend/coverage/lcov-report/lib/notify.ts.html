@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for components/StatusBadge.tsx</title>
+    <title>Code coverage report for lib/notify.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">components</a> StatusBadge.tsx</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">lib</a> notify.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>5/5</span>
+                <span class='fraction'>18/18</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">77.77% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>7/9</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/1</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>5/5</span>
+                <span class='fraction'>13/13</span>
             </div>
         
             
@@ -89,59 +89,68 @@
 <a name='L24'></a><a href='#L24'>24</a>
 <a name='L25'></a><a href='#L25'>25</a>
 <a name='L26'></a><a href='#L26'>26</a>
-<a name='L27'></a><a href='#L27'>27</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span></td><td class="text"><pre class="prettyprint lang-js">type StatusBadgeProps = {
-  status: string;
-};
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import toast from 'react-hot-toast';
+import type { AxiosError } from 'axios';
 &nbsp;
-const StatusBadge = ({ status }: StatusBadgeProps) =&gt; {
-  const colors: Record&lt;string, string&gt; = {
-    booked: "bg-amber-100 text-amber-800 border-amber-200",
-    rescheduled: "bg-sky-100 text-sky-800 border-sky-200",
-    no_show: "bg-rose-100 text-rose-800 border-rose-200",
-    cancelled: "bg-neutral-100 text-neutral-700 border-neutral-200",
-    completed: "bg-green-100 text-green-800 border-green-200",
-  };
+type ApiErrorData = { error?: string; message?: string };
 &nbsp;
-  const color =
-    colors[status] ||
-    "bg-neutral-100 text-neutral-700 border-neutral-200";
+export const messageFromError = (err: unknown): string =&gt; {
+  if (typeof err === 'string') return err;
+  if (err instanceof Error) return err.message;
 &nbsp;
-  return (
-    &lt;span
-      className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${color}`}
-    &gt;
-      {status.replace("_", " ")}
-    &lt;/span&gt;
-  );
+  // Axios-style error payloads
+  const ax = err as AxiosError&lt;ApiErrorData&gt;;
+  const payloadMsg = ax.response?.data?.error || ax.response?.data?.message;
+  if (payloadMsg) return payloadMsg;
+  if (ax.message) return ax.message;
+&nbsp;
+  return 'Request failed';
 }
 &nbsp;
-export default StatusBadge;</pre></td></tr></table></pre>
+export const notify = {
+  success(msg: string) {
+    toast.success(msg);
+  },
+  error(msg: string) {
+    toast.error(msg);
+  },
+  apiError(err: unknown, fallback = <span class="branch-0 cbranch-no" title="branch not covered" >'Something went wrong')</span> {
+    toast.error(messageFromError(err) || <span class="branch-1 cbranch-no" title="branch not covered" >fallback)</span>;
+  },
+};
+&nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->

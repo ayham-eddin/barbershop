@@ -1,4 +1,3 @@
-// src/__tests__/DashboardPage.test.tsx
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DashboardPage from '../pages/DashboardPage';
