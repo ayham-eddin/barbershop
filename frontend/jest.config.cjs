@@ -5,7 +5,7 @@ module.exports = {
     '^.+\\.(ts|tsx|js|jsx)$': [
       'ts-jest',
       {
-        // 👇 Use a Jest-specific tsconfig (CommonJS)
+        // ✅ Point to a real tsconfig file (path string)
         tsconfig: '<rootDir>/tsconfig.jest.json',
         useESM: false,
       },

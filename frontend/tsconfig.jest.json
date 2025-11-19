@@ -1,10 +1,21 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "module": "CommonJS",
+    // ✅ Allow import.meta (needed for api/client.ts)
+    "module": "esnext",
+
+    // ✅ Use classic Node-style resolution for Jest
     "moduleResolution": "node",
+
+    // ✅ Turn off the strict ESM-only behavior that caused TS1295 in tests
     "verbatimModuleSyntax": false,
-    "isolatedModules": false
+
+    // Helpful interop & Jest behavior
+    "esModuleInterop": true,
+    "allowJs": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
   },
   "include": ["src"]
 }

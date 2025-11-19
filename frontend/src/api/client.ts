@@ -1,6 +1,33 @@
+// src/api/client.ts
 import axios, { AxiosError } from 'axios';
 
-const envBase = import.meta.env.VITE_API_URL as string | undefined;
+
+const readViteEnvBase = (): string | undefined => {
+  try {
+    const meta = (0, eval)('import.meta') as {
+      env?: { VITE_API_URL?: string };
+    };
+    return meta?.env?.VITE_API_URL;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Fallback for non-Vite environments (tests, Node scripts).
+ */
+const readNodeEnvBase = (): string | undefined => {
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.VITE_API_URL || process.env.API_URL;
+    }
+  } catch {
+    // ignore
+  }
+  return undefined;
+};
+
+const envBase = readViteEnvBase() ?? readNodeEnvBase();
 
 const isRemoteBase =
   envBase &&
