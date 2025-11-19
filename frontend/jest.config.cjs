@@ -26,13 +26,13 @@ module.exports = {
     '\\.(css|less|scss|sass)$': '<rootDir>/src/__mocks__/styleMock.ts',
   },
 
-  // 🔒 Global coverage thresholds
+  // 🔒 Stricter global coverage thresholds for frontend
   coverageThreshold: {
     global: {
-      statements: 65,
-      branches: 50,
-      functions: 60,
-      lines: 65,
+      statements: 80,
+      branches: 70,
+      functions: 75,
+      lines: 80,
     },
   },
 };
