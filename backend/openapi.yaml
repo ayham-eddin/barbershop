@@ -9,14 +9,17 @@ info:
 
 servers:
   - url: http://localhost:{port}/api
-    description: Local dev
+    description: Local development
     variables:
       port:
         default: "3000"
+  - url: https://barbershop-odd7.onrender.com/api
+    description: Production (Render)
 
 tags:
   - name: Auth
   - name: Users
+  - name: Admin - Users
   - name: Services
   - name: Barbers
   - name: Bookings
@@ -120,7 +123,7 @@ paths:
       summary: Public list services
       responses:
         "200":
-          description: List of services
+          description: List of services (empty array if none)
           content:
             application/json:
               schema:
@@ -138,7 +141,7 @@ paths:
       summary: Public list barbers (with populated services)
       responses:
         "200":
-          description: List of barbers
+          description: List of barbers (empty array if none)
           content:
             application/json:
               schema:
@@ -322,7 +325,7 @@ paths:
 
   /admin/users:
     get:
-      tags: [Users]
+      tags: ["Admin - Users"]
       summary: List users (admin)
       security:
         - bearerAuth: []
@@ -339,6 +342,12 @@ paths:
                     items:
                       $ref: "#/components/schemas/UserPublic"
                 required: [users]
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: Admin only
           content:
@@ -377,6 +386,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       tags: [Admin - TimeOff]
@@ -406,6 +427,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /admin/timeoff/{id}:
     delete:
@@ -430,6 +463,18 @@ paths:
                   deleted:
                     $ref: "#/components/schemas/TimeOff"
                 required: [deleted]
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Not found
           content:
@@ -456,6 +501,19 @@ paths:
                     items:
                       $ref: "#/components/schemas/Service"
                 required: [services]
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
     post:
       tags: [Admin - Services]
       summary: Create service
@@ -478,6 +536,18 @@ paths:
                   service:
                     $ref: "#/components/schemas/Service"
                 required: [service]
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: Service name already exists
           content:
@@ -514,12 +584,25 @@ paths:
                   service:
                     $ref: "#/components/schemas/Service"
                 required: [service]
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: Service name already exists
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
     delete:
       tags: [Admin - Services]
       summary: Delete service
@@ -542,6 +625,18 @@ paths:
                   deleted:
                     $ref: "#/components/schemas/Service"
                 required: [deleted]
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /admin/barbers:
     get:
@@ -562,6 +657,19 @@ paths:
                     items:
                       $ref: "#/components/schemas/Barber"
                 required: [barbers]
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
     post:
       tags: [Admin - Barbers]
       summary: Create barber (minimal)
@@ -584,6 +692,18 @@ paths:
                   barber:
                     $ref: "#/components/schemas/Barber"
                 required: [barber]
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /admin/barbers/{id}:
     get:
@@ -608,12 +728,25 @@ paths:
                   barber:
                     $ref: "#/components/schemas/Barber"
                 required: [barber]
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
     patch:
       tags: [Admin - Barbers]
       summary: Update barber (services/working hours/etc.)
@@ -642,6 +775,18 @@ paths:
                   barber:
                     $ref: "#/components/schemas/Barber"
                 required: [barber]
+        "401":
+          description: Unauthorized (missing or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   securitySchemes:
@@ -852,7 +997,7 @@ components:
         endsAt: { type: string, format: date-time }
         status:
           type: string
-          enum: [booked, cancelled]
+          enum: [booked, cancelled, completed, no_show]
         notes:
           type: string
       required:
