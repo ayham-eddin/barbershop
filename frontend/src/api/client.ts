@@ -6,7 +6,22 @@ import axios, {
 
 type EnvLike = { VITE_API_URL?: string };
 
+// -----------------------------------------------------------------------------
+// Updated environment reader (supports Vite + Node)
+// -----------------------------------------------------------------------------
 const readEnvBase = (): string | undefined => {
+  // 1) Prefer Vite env (browser / Vite build)
+  try {
+    const viteEnv = (import.meta as unknown as { env?: EnvLike }).env;
+    const viteValue = viteEnv?.VITE_API_URL;
+    if (typeof viteValue === 'string') {
+      return viteValue;
+    }
+  } catch {
+    // ignore if import.meta is not available (tests, node, SSR)
+  }
+
+  // 2) Fallback: Node/process env (tests, tooling)
   try {
     if (typeof process !== 'undefined') {
       const env = (process as { env?: EnvLike }).env;
@@ -16,11 +31,15 @@ const readEnvBase = (): string | undefined => {
       }
     }
   } catch {
-    // ignore in browser / non-Node envs
+    // ignore process env issues
   }
+
   return undefined;
 };
 
+// -----------------------------------------------------------------------------
+// Base URL logic
+// -----------------------------------------------------------------------------
 export const computeBaseURL = (
   rawEnv: string | undefined = readEnvBase(),
 ): string => {
@@ -40,9 +59,9 @@ export const computeBaseURL = (
 
 const baseURL = computeBaseURL();
 
-/**
- * Request interceptor: attach Authorization header when token exists.
- */
+// -----------------------------------------------------------------------------
+// Auth token handling
+// -----------------------------------------------------------------------------
 export const attachAuthToken = (
   config: InternalAxiosRequestConfig,
 ): InternalAxiosRequestConfig => {
@@ -55,7 +74,6 @@ export const attachAuthToken = (
         : null;
 
     if (token) {
-      // Ensure headers object exists
       cfg.headers = cfg.headers ?? {};
       (cfg.headers as Record<string, string>).Authorization = `Bearer ${token}`;
     }
@@ -66,10 +84,12 @@ export const attachAuthToken = (
   return cfg;
 };
 
+// -----------------------------------------------------------------------------
+// Error normalization
+// -----------------------------------------------------------------------------
 export const normalizeAxiosError = (
   err: AxiosError<{ error?: string; message?: string }>,
 ): Promise<never> => {
-  // No response at all -> network / server offline
   if (!err.response) {
     return Promise.reject(
       new Error('Server unavailable. Please try again later.'),
@@ -78,7 +98,6 @@ export const normalizeAxiosError = (
 
   const status = err.response.status;
 
-  // Handle unauthorized requests globally
   if (status === 401) {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -103,7 +122,7 @@ export const normalizeAxiosError = (
           }
         }, 200);
       } catch {
-        // ignore setTimeout/window issues in weird envs
+        // ignore setTimeout/window issues
       }
     }
   }
@@ -116,23 +135,18 @@ export const normalizeAxiosError = (
 
   err.message = typeof msg === 'string' ? msg : 'Request failed';
 
-  // Re-throw the original AxiosError so callers can read `err.response.data`
   return Promise.reject(err);
 };
 
 // -----------------------------------------------------------------------------
-// Axios instance configured with the helpers above
+// Axios instance
 // -----------------------------------------------------------------------------
-
 const api = axios.create({
   baseURL,
   withCredentials: false,
 });
 
-// ✅ Attach token from localStorage on every request
 api.interceptors.request.use(attachAuthToken);
-
-// ✅ Normalize errors & auto-logout on 401
 api.interceptors.response.use(
   (res) => res,
   (err) =>
