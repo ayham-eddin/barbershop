@@ -2,13 +2,11 @@ import Button from "../../ui/Button";
 
 const ModalFooter = ({
   onCancel,
-  onSubmit,
   submitLabel = "Save",
   submitting,
   cancelLabel = "Cancel",
 }: {
   onCancel: () => void;
-  onSubmit: () => void;
   submitLabel?: string;
   cancelLabel?: string;
   submitting?: boolean;
@@ -18,11 +16,15 @@ const ModalFooter = ({
       <Button variant="secondary" size="sm" onClick={onCancel}>
         {cancelLabel}
       </Button>
+
       <Button
         variant="primary"
         size="sm"
-        onClick={onSubmit}
         loading={submitting}
+        onClick={() => {
+          const form = document.getElementById("edit-barber-form") as HTMLFormElement | null;
+          if (form) form.requestSubmit();
+        }}
       >
         {submitLabel}
       </Button>

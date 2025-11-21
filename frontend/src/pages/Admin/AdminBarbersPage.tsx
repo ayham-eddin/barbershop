@@ -1,3 +1,5 @@
+/* FULL CORRECTED FILE */
+
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -8,6 +10,12 @@ import DeleteConflictPanel, {
   type ConflictBooking,
   type DeleteConflictState,
 } from "../../components/admin/barbers/DeleteConflictPanel";
+
+// Layout / UI
+import AdminPageLayout from "../../components/admin/AdminPageLayout";
+import PageHeader from "../../components/admin/PageHeader";
+import TableContainer from "../../components/ui/TableContainer";
+import ModalFooter from "../../components/admin/modals/ModalFooter";
 
 type WorkingHour = {
   day: number; // 0-6
@@ -49,7 +57,7 @@ const weekdayLabel = (day: number): string => {
     6: "Sat",
   };
   return map[day] ?? String(day);
-}
+};
 
 const AdminBarbersPage = () => {
   const qc = useQueryClient();
@@ -90,12 +98,12 @@ const AdminBarbersPage = () => {
     setEditActive(b.active);
     setEditWorkingHours(b.workingHours ?? []);
     setEditOpen(true);
-  }
+  };
 
   const closeEdit = () => {
     setEditOpen(false);
     setEditId(null);
-  }
+  };
 
   /* ─────────────── helpers ─────────────── */
 
@@ -122,9 +130,13 @@ const AdminBarbersPage = () => {
       }
       return prev.filter((w) => w.day !== day);
     });
-  }
+  };
 
-  const updateDayField = (day: number, field: "start" | "end", value: string) => {
+  const updateDayField = (
+    day: number,
+    field: "start" | "end",
+    value: string,
+  ) => {
     setEditWorkingHours((prev) => {
       const exists = prev.find((w) => w.day === day);
       if (!exists) {
@@ -138,7 +150,7 @@ const AdminBarbersPage = () => {
       }
       return prev.map((w) => (w.day === day ? { ...w, [field]: value } : w));
     });
-  }
+  };
 
   const getDayConfig = (day: number): {
     enabled: boolean;
@@ -151,7 +163,7 @@ const AdminBarbersPage = () => {
       start: block?.start ?? "09:00",
       end: block?.end ?? "17:00",
     };
-  }
+  };
 
   /* ─────────────── mutations ─────────────── */
 
@@ -304,19 +316,12 @@ const AdminBarbersPage = () => {
   /* ─────────────── UI ─────────────── */
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-neutral-900">
-          Manage Barbers
-        </h1>
-        <button
-          onClick={() => refetch()}
-          className="rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-medium hover:bg-neutral-800 transition disabled:opacity-60"
-          disabled={isLoading}
-        >
-          Refresh
-        </button>
-      </div>
+    <AdminPageLayout>
+      <PageHeader
+        title="Manage Barbers"
+        onRefresh={() => refetch()}
+        loading={isLoading}
+      />
 
       {/* Create form */}
       <form
@@ -371,7 +376,7 @@ const AdminBarbersPage = () => {
 
       {!isLoading && !isError && (
         <>
-          <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+          <TableContainer>
             <table className="min-w-full text-sm text-left">
               <thead className="bg-neutral-100 text-neutral-700 uppercase text-xs">
                 <tr>
@@ -470,7 +475,7 @@ const AdminBarbersPage = () => {
                 )}
               </tbody>
             </table>
-          </div>
+          </TableContainer>
 
           {/* Conflict box when delete fails because of future bookings */}
           {deleteConflict && (
@@ -488,23 +493,11 @@ const AdminBarbersPage = () => {
         title="Edit barber"
         onClose={closeEdit}
         footer={
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
-              onClick={closeEdit}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="edit-barber-form"
-              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-              disabled={updateMut.isPending}
-            >
-              {updateMut.isPending ? "Saving…" : "Save changes"}
-            </button>
-          </div>
+          <ModalFooter
+            onCancel={closeEdit}
+            submitting={updateMut.isPending}
+            submitLabel="Save changes"
+          />
         }
       >
         <form
@@ -553,6 +546,7 @@ const AdminBarbersPage = () => {
                 Uncheck a day to mark it as closed.
               </p>
             </div>
+
             <div className="mt-2 space-y-1.5">
               {DAY_ORDER.map((day) => {
                 const cfg = getDayConfig(day);
@@ -571,6 +565,7 @@ const AdminBarbersPage = () => {
                         {weekdayLabel(day)}
                       </span>
                     </label>
+
                     <input
                       type="time"
                       value={cfg.start}
@@ -580,7 +575,9 @@ const AdminBarbersPage = () => {
                       disabled={!cfg.enabled}
                       className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-xs disabled:bg-neutral-100"
                     />
+
                     <span className="text-neutral-500 text-xs">–</span>
+
                     <input
                       type="time"
                       value={cfg.end}
@@ -597,7 +594,8 @@ const AdminBarbersPage = () => {
           </div>
         </form>
       </Modal>
-    </div>
+    </AdminPageLayout>
   );
-}
+};
+
 export default AdminBarbersPage;
