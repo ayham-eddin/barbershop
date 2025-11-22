@@ -13,9 +13,9 @@ export const CountBadge = ({
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700">
-      <span className="min-w-[1ch] text-center">{count}</span>
-      <span className="text-neutral-500">{label}</span>
+    <span className="inline-flex items-center gap-1 rounded-full border-2 border-yellow-500 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700">
+      <span className="min-w-[1ch] text-center text-neutral-700">{count}</span>
+      <span className="text-neutral-700">{label}</span>
     </span>
   );
 }

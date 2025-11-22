@@ -32,7 +32,7 @@ const ServicesSection = ({ role }: Props) => {
     <section id="services" className="space-y-5" data-aos="fade-up">
       <div className="flex items-end justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-semibold text-neutral-900">
+          <h2 className="text-2xl font-semibold text-yellow-500">
             Services
           </h2>
           <CountBadge loading={isLoading} count={count} label="items" />
@@ -45,7 +45,7 @@ const ServicesSection = ({ role }: Props) => {
       )}
 
       {services && services.length > 0 && (
-        <SectionCard className="border-none shadow-none p-0 bg-transparent">
+        <SectionCard className="border border-white shadow-none p-0 bg-gradient-to-r from-black/100 via-black/90 to-black/80">
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((s) => (
               <ServiceCard key={s._id} service={s} role={role} />

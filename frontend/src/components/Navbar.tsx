@@ -28,7 +28,7 @@ const Navbar = ({ token, role, onLogout }: NavbarProps) => {
   };
 
   return (
-    <nav className="sticky top-0 z-20 bg-neutral-900/90 backdrop-blur border-b border-neutral-800">
+    <nav className="sticky top-0 z-20 bg-black backdrop-blur border-b border-neutral-800">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
         {/* Logo */}
         <Link to="/" className="group inline-flex items-center gap-2">

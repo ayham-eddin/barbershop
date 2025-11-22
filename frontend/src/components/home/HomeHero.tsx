@@ -11,7 +11,7 @@ const HomeHero = ({ role }: Props) => {
 
   return (
     <section
-      className="relative overflow-hidden rounded-3xl bg-neutral-950 text-white shadow-xl"
+      className="relative overflow-hidden rounded-3xl bg-neutral-950 text-white shadow-xl border border-white"
       data-aos="fade-up"
     >
       {/* Background image */}

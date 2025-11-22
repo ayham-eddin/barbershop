@@ -86,7 +86,7 @@ const App = () => {
 
   return (
     <Router>
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-amber-100/30 text-neutral-900">
+      <div className="min-h-screen from-amber-50 via-white to-amber-100/30 text-white">
         <Navbar token={token} role={role} onLogout={handleLogout} />
 
         <main className="max-w-6xl mx-auto px-6 py-10">

@@ -15,7 +15,7 @@ const BarberCard = ({ barber }: Props) => {
   return (
     <article className="rounded-2xl bg-white border border-neutral-200 p-5 shadow-sm hover:shadow-md transition">
       <div className="flex items-center gap-4">
-        <div className="h-12 w-12 rounded-full bg-neutral-900 text-white flex items-center justify-center font-semibold">
+        <div className="h-12 w-12 rounded-full bg-neutral-900 text-yellow-500 flex items-center justify-center font-semibold">
           {initials}
         </div>
         <div>
