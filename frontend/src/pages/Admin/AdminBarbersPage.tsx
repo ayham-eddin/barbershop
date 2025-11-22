@@ -1,5 +1,3 @@
-/* FULL CORRECTED FILE */
-
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -10,12 +8,13 @@ import DeleteConflictPanel, {
   type ConflictBooking,
   type DeleteConflictState,
 } from "../../components/admin/barbers/DeleteConflictPanel";
-
-// Layout / UI
 import AdminPageLayout from "../../components/admin/AdminPageLayout";
 import PageHeader from "../../components/admin/PageHeader";
 import TableContainer from "../../components/ui/TableContainer";
 import ModalFooter from "../../components/admin/modals/ModalFooter";
+import Input from "../../components/ui/Input";
+import Checkbox from "../../components/ui/Checkbox";
+import Button from "../../components/ui/Button";
 
 type WorkingHour = {
   day: number; // 0-6
@@ -323,46 +322,43 @@ const AdminBarbersPage = () => {
         loading={isLoading}
       />
 
-      {/* Create form */}
+      {/* Create form (using shared UI components) */}
       <form
         onSubmit={onSubmitCreate}
-        className="grid gap-3 sm:grid-cols-4 bg-white border border-neutral-200 rounded-xl p-4"
+        className="bg-white border border-neutral-200 rounded-xl p-4"
       >
-        <input
-          type="text"
-          value={name}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setName(e.target.value)
-          }
-          placeholder="Barber name"
-          className="rounded-lg border border-neutral-300 px-3 py-2"
-          required
-        />
-        <input
-          type="text"
-          value={specialtiesInput}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setSpecialtiesInput(e.target.value)
-          }
-          placeholder="Specialties (comma separated)"
-          className="rounded-lg border border-neutral-300 px-3 py-2"
-        />
-        <label className="flex items-center gap-2 text-sm text-neutral-700">
-          <input
-            type="checkbox"
-            className="rounded border-neutral-300"
-            checked={active}
-            onChange={(e) => setActive(e.target.checked)}
+        <div className="grid gap-3 sm:grid-cols-4">
+          <Input
+            placeholder="Barber name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
           />
-          Active
-        </label>
-        <button
-          type="submit"
-          className="rounded-lg bg-amber-400 text-neutral-900 font-semibold px-4 py-2 hover:bg-amber-300 transition"
-          disabled={createMut.isPending}
-        >
-          {createMut.isPending ? "Adding…" : "Add Barber"}
-        </button>
+
+          <Input
+            placeholder="Specialties (comma separated)"
+            value={specialtiesInput}
+            onChange={(e) => setSpecialtiesInput(e.target.value)}
+          />
+
+          <div className="flex items-center">
+            <Checkbox
+              label="Active"
+              checked={active}
+              onChange={(e) => setActive(e.target.checked)}
+            />
+          </div>
+
+          <div className="flex items-center">
+            <Button
+              type="submit"
+              loading={createMut.isPending}
+              className="w-full sm:w-auto bg-amber-400 text-neutral-900 hover:bg-amber-300"
+            >
+              {createMut.isPending ? "Adding…" : "Add Barber"}
+            </Button>
+          </div>
+        </div>
       </form>
 
       {isLoading && (
@@ -433,32 +429,37 @@ const AdminBarbersPage = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 space-x-2">
-                      <button
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() =>
                           updateMut.mutate({
                             id: b._id,
                             patch: { active: !b.active },
                           })
                         }
-                        className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
                         disabled={updateMut.isPending}
                       >
                         {b.active ? "Set inactive" : "Set active"}
-                      </button>
-                      <button
+                      </Button>
+
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => openEdit(b)}
-                        className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
                       >
                         Edit
-                      </button>
-                      <button
+                      </Button>
+
+                      <Button
+                        variant="danger"
+                        size="sm"
                         onClick={() => deleteMut.mutate(b._id)}
-                        className="rounded-md border border-rose-300 text-rose-700 px-3 py-1.5 hover:bg-rose-50"
                         disabled={deleteMut.isPending}
                         title="Delete barber (only allowed if no future bookings)"
                       >
                         Delete
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -505,36 +506,24 @@ const AdminBarbersPage = () => {
           onSubmit={onSubmitEdit}
           className="space-y-3"
         >
-          <label className="block text-sm font-medium text-neutral-700">
-            Name
-            <input
-              type="text"
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              required
-            />
-          </label>
+          <Input
+            label="Name"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            required
+          />
 
-          <label className="block text-sm font-medium text-neutral-700">
-            Specialties (comma separated)
-            <input
-              type="text"
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              value={editSpecialtiesInput}
-              onChange={(e) => setEditSpecialtiesInput(e.target.value)}
-            />
-          </label>
+          <Input
+            label="Specialties (comma separated)"
+            value={editSpecialtiesInput}
+            onChange={(e) => setEditSpecialtiesInput(e.target.value)}
+          />
 
-          <label className="inline-flex items-center gap-2 text-sm text-neutral-700">
-            <input
-              type="checkbox"
-              className="rounded border-neutral-300"
-              checked={editActive}
-              onChange={(e) => setEditActive(e.target.checked)}
-            />
-            Active
-          </label>
+          <Checkbox
+            label="Active"
+            checked={editActive}
+            onChange={(e) => setEditActive(e.target.checked)}
+          />
 
           {/* Working hours editor */}
           <div className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
@@ -552,40 +541,32 @@ const AdminBarbersPage = () => {
                 const cfg = getDayConfig(day);
                 return (
                   <div key={day} className="flex items-center gap-2 text-sm">
-                    <label className="flex items-center gap-2 min-w-[80px]">
-                      <input
-                        type="checkbox"
-                        className="rounded border-neutral-300"
-                        checked={cfg.enabled}
-                        onChange={(e) =>
-                          setDayEnabled(day, e.target.checked)
-                        }
-                      />
-                      <span className="w-10 text-neutral-800">
-                        {weekdayLabel(day)}
-                      </span>
-                    </label>
+                    <Checkbox
+                      label={weekdayLabel(day)}
+                      checked={cfg.enabled}
+                      onChange={(e) => setDayEnabled(day, e.target.checked)}
+                    />
 
-                    <input
+                    <Input
                       type="time"
                       value={cfg.start}
                       onChange={(e) =>
                         updateDayField(day, "start", e.target.value)
                       }
                       disabled={!cfg.enabled}
-                      className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-xs disabled:bg-neutral-100"
+                      className="w-24 text-xs"
                     />
 
                     <span className="text-neutral-500 text-xs">–</span>
 
-                    <input
+                    <Input
                       type="time"
                       value={cfg.end}
                       onChange={(e) =>
                         updateDayField(day, "end", e.target.value)
                       }
                       disabled={!cfg.enabled}
-                      className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-xs disabled:bg-neutral-100"
+                      className="w-24 text-xs"
                     />
                   </div>
                 );

@@ -1,13 +1,19 @@
-// src/pages/Admin/AdminServicesPage.tsx
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+
 import api from "../../api/client";
 import Modal from "../../components/Modal";
 import AdminServicesTable, {
   type Service,
 } from "../../components/admin/AdminServicesTable";
 import { extractErrorMessage } from "../../utils/httpErrors";
+import AdminPageLayout from "../../components/admin/AdminPageLayout";
+import PageHeader from "../../components/admin/PageHeader";
+import FormGrid from "../../components/ui/FormGrid";
+import Input from "../../components/ui/Input";
+import Button from "../../components/ui/Button";
+import ModalFooter from "../../components/admin/modals/ModalFooter";
 
 type AdminListResponse = { services: Service[] };
 
@@ -44,12 +50,12 @@ const AdminServicesPage = () => {
     setEditDurationMin(s.durationMin);
     setEditPrice(s.price);
     setEditOpen(true);
-  }
+  };
 
   const closeEdit = () => {
     setEditOpen(false);
     setEditId(null);
-  }
+  };
 
   // ---- mutations ----
   const createMut = useMutation({
@@ -74,9 +80,7 @@ const AdminServicesPage = () => {
   const updateMut = useMutation({
     mutationFn: async (payload: {
       id: string;
-      patch: Partial<
-        Pick<Service, "name" | "durationMin" | "price">
-      >;
+      patch: Partial<Pick<Service, "name" | "durationMin" | "price">>;
     }) => {
       const res = await api.patch(
         `/api/admin/services/${payload.id}`,
@@ -106,8 +110,9 @@ const AdminServicesPage = () => {
   const onSubmitCreate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!name.trim()) return toast.error("Name is required.");
-    if (durationMin <= 0 || durationMin > 480)
+    if (durationMin <= 0 || durationMin > 480) {
       return toast.error("Duration must be 1–480 minutes.");
+    }
     if (price < 0) return toast.error("Price must be ≥ 0.");
     createMut.mutate({ name: name.trim(), durationMin, price });
   };
@@ -116,9 +121,11 @@ const AdminServicesPage = () => {
     e.preventDefault();
     if (!editId) return;
     if (!editName.trim()) return toast.error("Name is required.");
-    if (editDurationMin <= 0 || editDurationMin > 480)
+    if (editDurationMin <= 0 || editDurationMin > 480) {
       return toast.error("Duration must be 1–480 minutes.");
+    }
     if (editPrice < 0) return toast.error("Price must be ≥ 0.");
+
     updateMut.mutate(
       {
         id: editId,
@@ -137,66 +144,47 @@ const AdminServicesPage = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-neutral-900">
-          Manage Services
-        </h1>
-        <button
-          onClick={() => refetch()}
-          className="rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-medium hover:bg-neutral-800 transition disabled:opacity-60"
-          disabled={isLoading}
-        >
-          Refresh
-        </button>
-      </div>
+    <AdminPageLayout>
+      <PageHeader
+        title="Manage Services"
+        onRefresh={() => refetch()}
+        loading={isLoading}
+      />
 
-      {/* Create form */}
-      <form
-        onSubmit={onSubmitCreate}
-        className="grid gap-3 sm:grid-cols-4 bg-white border border-neutral-200 rounded-xl p-4"
-      >
-        <input
-          type="text"
-          value={name}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setName(e.target.value)
-          }
-          placeholder="Service name"
-          className="rounded-lg border border-neutral-300 px-3 py-2"
-          required
-        />
-        <input
-          type="number"
-          min={5}
-          max={480}
-          value={durationMin}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setDurationMin(Number(e.target.value))
-          }
-          placeholder="Duration (min)"
-          className="rounded-lg border border-neutral-300 px-3 py-2"
-          required
-        />
-        <input
-          type="number"
-          min={0}
-          step={0.5}
-          value={price}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setPrice(Number(e.target.value))
-          }
-          placeholder="Price (€)"
-          className="rounded-lg border border-neutral-300 px-3 py-2"
-          required
-        />
-        <button
-          type="submit"
-          className="rounded-lg bg-amber-400 text-neutral-900 font-semibold px-4 py-2 hover:bg-amber-300 transition"
-          disabled={createMut.isPending}
-        >
-          {createMut.isPending ? "Adding…" : "Add Service"}
-        </button>
+      {/* Create form using shared UI components */}
+      <form onSubmit={onSubmitCreate}>
+        <FormGrid columns={4}>
+          <Input
+            placeholder="Service name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+
+          <Input
+            type="number"
+            min={5}
+            max={480}
+            value={durationMin}
+            onChange={(e) => setDurationMin(Number(e.target.value))}
+            placeholder="Duration (min)"
+            required
+          />
+
+          <Input
+            type="number"
+            min={0}
+            step={0.5}
+            value={price}
+            onChange={(e) => setPrice(Number(e.target.value))}
+            placeholder="Price (€)"
+            required
+          />
+
+          <Button type="submit" loading={createMut.isPending}>
+            Add Service
+          </Button>
+        </FormGrid>
       </form>
 
       {/* Table / states */}
@@ -217,74 +205,54 @@ const AdminServicesPage = () => {
       />
 
       {/* Edit modal */}
-      <Modal 
-        open={editOpen} 
-        title="Edit service" 
-        onClose={closeEdit} 
+      <Modal
+        open={editOpen}
+        title="Edit service"
+        onClose={closeEdit}
         footer={
-        <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
-              onClick={closeEdit}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="edit-service-form"
-              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-              disabled={updateMut.isPending}
-            >
-              {updateMut.isPending ? "Saving…" : "Save changes"}
-            </button>
-          </div>
+          <ModalFooter
+            onCancel={closeEdit}
+            submitting={updateMut.isPending}
+            submitLabel="Save changes"
+            formId="edit-service-form"
+          />
         }
       >
-        <form 
+        <form
           id="edit-service-form"
-          onSubmit={onSubmitEdit} 
+          onSubmit={onSubmitEdit}
           className="space-y-3"
         >
-          <label className="block text-sm font-medium text-neutral-700">
-            Name
-            <input
-              type="text"
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              required
-            />
-          </label>
+          <Input
+            label="Name"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            required
+          />
 
-          <label className="block text-sm font-medium text-neutral-700">
-            Duration (min)
-            <input
-              type="number"
-              min={5}
-              max={480}
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              value={editDurationMin}
-              onChange={(e) => setEditDurationMin(Number(e.target.value))}
-              required
-            />
-          </label>
+          <Input
+            label="Duration (min)"
+            type="number"
+            min={5}
+            max={480}
+            value={editDurationMin}
+            onChange={(e) => setEditDurationMin(Number(e.target.value))}
+            required
+          />
 
-          <label className="block text-sm font-medium text-neutral-700">
-            Price (€)
-            <input
-              type="number"
-              min={0}
-              step={0.5}
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-              value={editPrice}
-              onChange={(e) => setEditPrice(Number(e.target.value))}
-              required
-            />
-          </label>
+          <Input
+            label="Price (€)"
+            type="number"
+            min={0}
+            step={0.5}
+            value={editPrice}
+            onChange={(e) => setEditPrice(Number(e.target.value))}
+            required
+          />
         </form>
       </Modal>
-    </div>
+    </AdminPageLayout>
   );
-}
+};
+
 export default AdminServicesPage;

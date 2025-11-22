@@ -18,9 +18,14 @@ import CalendarGrid, {
 import AdminBookingEditModal from "../../components/admin/AdminBookingEditModal";
 import AdminCalendarSkeleton from "../../components/admin/AdminCalendarSkeleton";
 import AdminBookingsTable from "../../components/admin/AdminBookingsTable";
+import AdminPageLayout from "../../components/admin/AdminPageLayout";
+import PageHeader from "../../components/admin/PageHeader";
+import FormGrid from "../../components/ui/FormGrid";
+import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
+import Button from "../../components/ui/Button";
 
 /* ----------------------------- Types ----------------------------- */
-
 interface AdminBooking {
   _id: string;
   serviceName: string;
@@ -43,7 +48,6 @@ interface AdminBooking {
   barber?: { id: string; name?: string };
   notes?: string;
 }
-
 interface AdminResponse {
   bookings: AdminBooking[];
   page: number;
@@ -51,7 +55,6 @@ interface AdminResponse {
   pages: number;
   total: number;
 }
-
 interface Barber {
   _id: string;
   name: string;
@@ -141,20 +144,20 @@ const AdminBookingsPage = () => {
       new Date(
         `${ymd(viewDate)}T${String(workingHours.startHour).padStart(
           2,
-          "0",
-        )}:00:00`,
+          "0"
+        )}:00:00`
       ),
-    [viewDate, workingHours.startHour],
+    [viewDate, workingHours.startHour]
   );
   const endDate = useMemo(
     () =>
       new Date(
         `${ymd(viewDate)}T${String(workingHours.endHour).padStart(
           2,
-          "0",
-        )}:00:00`,
+          "0"
+        )}:00:00`
       ),
-    [viewDate, workingHours.endHour],
+    [viewDate, workingHours.endHour]
   );
 
   // barbers for dropdown/edit
@@ -168,7 +171,7 @@ const AdminBookingsPage = () => {
 
   const selectedBarber = useMemo(
     () => barbers.find((b) => b._id === barberId) ?? null,
-    [barbers, barberId],
+    [barbers, barberId]
   );
 
   // services for edit modal select
@@ -212,10 +215,7 @@ const AdminBookingsPage = () => {
       staleTime: 5_000,
     });
 
-  const bookings: AdminBooking[] = useMemo(
-    () => data?.bookings ?? [],
-    [data],
-  );
+  const bookings: AdminBooking[] = useMemo(() => data?.bookings ?? [], [data]);
   const curPage = data?.page ?? page;
   const totalPages = data?.pages ?? 1;
 
@@ -237,7 +237,7 @@ const AdminBookingsPage = () => {
         qc.setQueryData<AdminResponse>(qKey, {
           ...prev,
           bookings: prev.bookings.map((b) =>
-            b._id === id ? { ...b, status: "cancelled" } : b,
+            b._id === id ? { ...b, status: "cancelled" } : b
           ),
         });
       }
@@ -263,7 +263,7 @@ const AdminBookingsPage = () => {
         qc.setQueryData<AdminResponse>(qKey, {
           ...prev,
           bookings: prev.bookings.map((b) =>
-            b._id === id ? { ...b, status: "completed" } : b,
+            b._id === id ? { ...b, status: "completed" } : b
           ),
         });
       }
@@ -286,7 +286,7 @@ const AdminBookingsPage = () => {
         qc.setQueryData<AdminResponse>(qKey, {
           ...prev,
           bookings: prev.bookings.map((b) =>
-            b._id === id ? { ...b, status: "no_show" } : b,
+            b._id === id ? { ...b, status: "no_show" } : b
           ),
         });
       }
@@ -379,7 +379,7 @@ const AdminBookingsPage = () => {
           status: b.status,
           label: b.serviceName,
         })),
-    [bookings, viewDate],
+    [bookings, viewDate]
   );
 
   const today = new Date();
@@ -392,43 +392,35 @@ const AdminBookingsPage = () => {
   /* ------------------------------ UI ------------------------------ */
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
-      {/* Header with actions (responsive) */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-xl sm:text-2xl font-semibold text-neutral-900">
-          Admin Bookings
-        </h1>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setShowCalendar((v) => !v)}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-xs sm:text-sm font-medium text-neutral-800 hover:bg-neutral-100 transition"
-          >
-            {showCalendar ? "Hide day view" : "Show day view"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowRangeFilters((v) => !v)}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-xs sm:text-sm font-medium text-neutral-800 hover:bg-neutral-100 transition"
-          >
-            {showRangeFilters ? "Hide list range" : "Show list range"}
-          </button>
-          <button
-            onClick={() => refetch()}
-            className="rounded-lg bg-neutral-900 text-white px-4 py-2 text-xs sm:text-sm font-medium hover:bg-neutral-800 transition disabled:opacity-60"
-            disabled={isFetching}
-          >
-            {isFetching ? "Refreshing…" : "Refresh"}
-          </button>
-        </div>
+    <AdminPageLayout>
+      <PageHeader title="Bookings" onRefresh={refetch} loading={isFetching} />
+
+      {/* View toggles */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowCalendar((v) => !v)}
+        >
+          {showCalendar ? "Hide day view" : "Show day view"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowRangeFilters((v) => !v)}
+        >
+          {showRangeFilters ? "Hide list range" : "Show list range"}
+        </Button>
       </div>
 
       {/* Top filters */}
-      <div className="grid gap-3 grid-cols-1 md:grid-cols-6 bg-white border border-neutral-200 rounded-xl p-4">
-        <select
+      <FormGrid columns={6}>
+        <Select
+          label="Status"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
         >
           <option value="">All statuses</option>
           <option value="booked">Booked</option>
@@ -436,12 +428,12 @@ const AdminBookingsPage = () => {
           <option value="no_show">No-Show</option>
           <option value="cancelled">Cancelled</option>
           <option value="completed">Completed</option>
-        </select>
+        </Select>
 
-        <select
+        <Select
+          label="Barber"
           value={barberId}
           onChange={(e) => setBarberId(e.target.value)}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
         >
           <option value="">All barbers</option>
           {barbers.map((b) => (
@@ -449,82 +441,86 @@ const AdminBookingsPage = () => {
               {b.name}
             </option>
           ))}
-        </select>
+        </Select>
 
         {/* Day controls (calendar view) */}
         <div className="col-span-2 flex flex-wrap items-center gap-2">
-          <button
+          <Button
             type="button"
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-100"
+            variant="secondary"
+            size="sm"
             onClick={() => setViewDateAndSync(addDays(viewDate, -1))}
             title="Previous day"
           >
             ←
-          </button>
-          <input
+          </Button>
+          <Input
             type="date"
             value={ymd(viewDate)}
             onChange={(e) => {
-              const d = e.target.value
-                ? new Date(e.target.value)
-                : new Date();
+              const d = e.target.value ? new Date(e.target.value) : new Date();
               setViewDateAndSync(d);
             }}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm flex-1 min-w-[120px]"
+            className="flex-1 min-w-[120px]"
           />
-          <button
+          <Button
             type="button"
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-100"
+            variant="secondary"
+            size="sm"
             onClick={() => setViewDateAndSync(new Date())}
             title="Today"
+            disabled={isToday}
           >
             Today
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-100"
+            variant="secondary"
+            size="sm"
             onClick={() => setViewDateAndSync(addDays(viewDate, +1))}
             title="Next day"
           >
             →
-          </button>
+          </Button>
         </div>
 
-        <input
-          type="text"
+        <Input
+          label="Search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-          placeholder="Search customer (name/email)"
+          placeholder="Customer name or email"
         />
 
-        <button
-          onClick={() => {
-            const todayDate = new Date();
-            setStatus("");
-            setBarberId("");
-            setQ("");
-            setViewDateAndSync(todayDate);
-          }}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-100"
-        >
-          Reset
-        </button>
-      </div>
+        <div className="flex items-end">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              const todayDate = new Date();
+              setStatus("");
+              setBarberId("");
+              setQ("");
+              setViewDateAndSync(todayDate);
+            }}
+          >
+            Reset
+          </Button>
+        </div>
+      </FormGrid>
 
       {/* List range controls */}
       {showRangeFilters && (
-        <div className="grid gap-3 grid-cols-1 md:grid-cols-3 bg-white border border-neutral-200 rounded-xl p-4 text-xs text-neutral-700">
+        <FormGrid columns={3} className="text-xs text-neutral-700">
           <div className="flex flex-col gap-1">
             <span className="font-medium">From (list range)</span>
-            <input
+            <Input
               type="date"
               value={ymd(listFrom)}
               onChange={(e) => {
                 const d = e.target.value
                   ? new Date(e.target.value)
                   : new Date();
-                // Ensure from <= to
                 if (d > listTo) {
                   setListFrom(d);
                   setListTo(d);
@@ -532,19 +528,18 @@ const AdminBookingsPage = () => {
                   setListFrom(d);
                 }
               }}
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
             />
           </div>
+
           <div className="flex flex-col gap-1">
             <span className="font-medium">To (list range)</span>
-            <input
+            <Input
               type="date"
               value={ymd(listTo)}
               onChange={(e) => {
                 const d = e.target.value
                   ? new Date(e.target.value)
                   : new Date();
-                // Ensure from <= to
                 if (d < listFrom) {
                   setListFrom(d);
                   setListTo(d);
@@ -552,15 +547,15 @@ const AdminBookingsPage = () => {
                   setListTo(d);
                 }
               }}
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
             />
           </div>
+
           <p className="self-center md:text-left text-center text-[11px] text-neutral-500">
             This range controls which bookings appear in the table below (and in
             the optional day view, as long as the selected day falls within the
             range).
           </p>
-        </div>
+        </FormGrid>
       )}
 
       {/* Table + pagination */}
@@ -597,12 +592,12 @@ const AdminBookingsPage = () => {
               }}
               onEmptySlotClick={(dt) => {
                 const sameDayBookings = bookings.filter(
-                  (b) => b.startsAt.slice(0, 10) === ymd(viewDate),
+                  (b) => b.startsAt.slice(0, 10) === ymd(viewDate)
                 );
 
                 const seed =
                   sameDayBookings.find(
-                    (b) => barberId && b.barber?.id === barberId,
+                    (b) => barberId && b.barber?.id === barberId
                   ) ?? sameDayBookings[0];
 
                 const matchedService =
@@ -656,7 +651,7 @@ const AdminBookingsPage = () => {
         }}
         isSubmitting={patchMutation.isPending}
       />
-    </div>
+    </AdminPageLayout>
   );
 };
 

@@ -17,6 +17,12 @@ import Modal from "../../components/Modal";
 import AdminUsersTable, {
   type AdminUserRow,
 } from "../../components/admin/users/AdminUsersTable";
+import AdminPageLayout from "../../components/admin/AdminPageLayout";
+import PageHeader from "../../components/admin/PageHeader";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
+import Checkbox from "../../components/ui/Checkbox";
 
 type UsersResponse = { users: AdminUserRow[] };
 
@@ -82,7 +88,7 @@ const AdminUsersPage = () => {
           users: prev.users.map((u) =>
             u._id === id
               ? { ...u, is_online_booking_blocked: false, block_reason: "" }
-              : u
+              : u,
           ),
         });
       }
@@ -115,7 +121,7 @@ const AdminUsersPage = () => {
                   is_online_booking_blocked: true,
                   block_reason: reason ?? "",
                 }
-              : u
+              : u,
           ),
         });
       }
@@ -146,7 +152,7 @@ const AdminUsersPage = () => {
                   ...u,
                   warning_count: Math.max(0, (u.warning_count ?? 0) - 1),
                 }
-              : u
+              : u,
           ),
         });
       }
@@ -169,7 +175,7 @@ const AdminUsersPage = () => {
       const payload = {
         name: form.name?.trim() || undefined,
         email: form.email?.trim() || undefined,
-        role: form.role, // 'user' | 'admin' | undefined
+        role: form.role,
         phone: form.phone?.toString().trim() || undefined,
         address: form.address?.toString().trim() || undefined,
         avatarUrl: form.avatarUrl?.toString().trim() || undefined,
@@ -202,7 +208,7 @@ const AdminUsersPage = () => {
                     "" ||
                     undefined,
                 }
-              : u
+              : u,
           ),
         });
       }
@@ -246,17 +252,12 @@ const AdminUsersPage = () => {
 
   /* ------------------------------ UI ------------------------------ */
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-neutral-900">Users</h1>
-        <button
-          onClick={() => refetch()}
-          className="rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-medium hover:bg-neutral-800 transition disabled:opacity-60"
-          disabled={isFetching}
-        >
-          {isFetching ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
+    <AdminPageLayout>
+      <PageHeader
+        title="Users"
+        onRefresh={() => refetch()}
+        loading={isFetching}
+      />
 
       <AdminUsersTable
         rows={rows}
@@ -281,25 +282,28 @@ const AdminUsersPage = () => {
         }}
         footer={
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               type="button"
               onClick={() => {
                 setDetailsOpen(false);
                 setSelectedId(null);
               }}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
               disabled={isWorking}
             >
               Close
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               type="submit"
               form="edit-user-form"
               disabled={saveDetails.isPending}
-              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
+              loading={saveDetails.isPending}
             >
-              {saveDetails.isPending ? "Saving…" : "Save changes"}
-            </button>
+              Save changes
+            </Button>
           </div>
         }
       >
@@ -315,83 +319,71 @@ const AdminUsersPage = () => {
             }}
           >
             <div className="grid sm:grid-cols-2 gap-3">
-              <label className="block text-sm font-medium text-neutral-700">
-                Name
-                <input
-                  type="text"
-                  value={form.name ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, name: e.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-                  required
-                />
-              </label>
-              <label className="block text-sm font-medium text-neutral-700">
-                Email
-                <input
-                  type="email"
-                  value={form.email ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, email: e.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-                  required
-                />
-              </label>
-              <label className="block text-sm font-medium text-neutral-700">
-                Role
-                <select
-                  value={form.role ?? "user"}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      role: e.target.value as "user" | "admin",
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-                >
-                  <option value="user">user</option>
-                  <option value="admin">admin</option>
-                </select>
-              </label>
-              <label className="block text-sm font-medium text-neutral-700">
-                Phone
-                <input
-                  type="text"
-                  value={form.phone ?? ""}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, phone: e.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
-                />
-              </label>
-              <label className="block text-sm font-medium text-neutral-700 sm:col-span-2">
-                Address
-                <input
-                  type="text"
+              <Input
+                label="Name"
+                value={form.name ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }
+                required
+              />
+
+              <Input
+                label="Email"
+                type="email"
+                value={form.email ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, email: e.target.value }))
+                }
+                required
+              />
+
+              <Select
+                label="Role"
+                value={form.role ?? "user"}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    role: e.target.value as "user" | "admin",
+                  }))
+                }
+              >
+                <option value="user">user</option>
+                <option value="admin">admin</option>
+              </Select>
+
+              <Input
+                label="Phone"
+                value={form.phone ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, phone: e.target.value }))
+                }
+              />
+
+              <div className="sm:col-span-2">
+                <Input
+                  label="Address"
                   value={form.address ?? ""}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, address: e.target.value }))
                   }
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
                 />
-              </label>
-              <label className="block text-sm font-medium text-neutral-700 sm:col-span-2">
-                Avatar URL
-                <input
+              </div>
+
+              <div className="sm:col-span-2">
+                <Input
+                  label="Avatar URL"
                   type="url"
                   value={form.avatarUrl ?? ""}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, avatarUrl: e.target.value }))
                   }
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
                 />
-              </label>
+              </div>
 
-              <label className="flex items-center gap-2 sm:col-span-2">
-                <input
-                  type="checkbox"
+              <div className="sm:col-span-2">
+                <Checkbox
+                  label="Blocked from online booking"
                   checked={!!form.is_online_booking_blocked}
                   onChange={(e) =>
                     setForm((f) => ({
@@ -400,23 +392,19 @@ const AdminUsersPage = () => {
                     }))
                   }
                 />
-                <span className="text-sm text-neutral-800">
-                  Blocked from online booking
-                </span>
-              </label>
-              <label className="block text-sm font-medium text-neutral-700 sm:col-span-2">
-                Block reason (optional)
-                <input
-                  type="text"
+              </div>
+
+              <div className="sm:col-span-2">
+                <Input
+                  label="Block reason (optional)"
                   value={form.block_reason ?? ""}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, block_reason: e.target.value }))
                   }
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
                   placeholder="e.g., repeated no-shows"
                   maxLength={300}
                 />
-              </label>
+              </div>
             </div>
 
             <div className="flex justify-between items-center pt-2">
@@ -434,7 +422,7 @@ const AdminUsersPage = () => {
           </form>
         )}
       </Modal>
-    </div>
+    </AdminPageLayout>
   );
 };
 

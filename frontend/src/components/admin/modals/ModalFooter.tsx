@@ -5,11 +5,13 @@ const ModalFooter = ({
   submitLabel = "Save",
   submitting,
   cancelLabel = "Cancel",
+  formId = "edit-barber-form",
 }: {
   onCancel: () => void;
   submitLabel?: string;
   cancelLabel?: string;
   submitting?: boolean;
+  formId?: string;
 }) => {
   return (
     <div className="flex justify-end gap-2 pt-2">
@@ -22,7 +24,7 @@ const ModalFooter = ({
         size="sm"
         loading={submitting}
         onClick={() => {
-          const form = document.getElementById("edit-barber-form") as HTMLFormElement | null;
+          const form = document.getElementById(formId) as HTMLFormElement | null;
           if (form) form.requestSubmit();
         }}
       >
