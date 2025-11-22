@@ -1,132 +1,134 @@
-// frontend/src/pages/ContactPage.tsx
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useState } from "react";
+import PageHeader from "../components/ui/PageHeader";
+import Section from "../components/ui/Section";
+import Card from "../components/ui/Card";
+import Input from "../components/ui/Input";
+import Textarea from "../components/ui/Textarea";
+import Button from "../components/ui/Button";
+import ContactMap from "../components/contact/ContactMap";
 
 const ContactPage = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // In this project we don’t actually send the message anywhere.
-    // This just shows a simple UI confirmation.
+    // Demo-only: no real sending here.
     setSubmitted(true);
   }
 
   return (
-    <section className="space-y-8">
-      <header className="max-w-3xl">
-        <h1 className="text-3xl font-semibold text-neutral-900">
-          Contact
-        </h1>
-        <p className="mt-2 text-neutral-600 text-sm md:text-base">
-          Have a question about your booking, services, or anything else?
-          Send us a message and we&apos;ll get back to you as soon as we can.
-        </p>
-      </header>
-
-      <div className="grid gap-8 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-start">
-        {/* Form */}
-        <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-neutral-900">
-            Send a message
-          </h2>
-
-          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-            <label className="block text-sm font-medium text-neutral-700">
-              Name
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                required
-              />
-            </label>
-
-            <label className="block text-sm font-medium text-neutral-700">
-              Email
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                required
-              />
-            </label>
-
-            <label className="block text-sm font-medium text-neutral-700">
-              Message
-              <textarea
+    <div className="space-y-10">
+      <PageHeader
+        eyebrow="Contact & Location"
+        title="Get in touch with the shop"
+        subtitle="Questions about bookings, services, or anything else? Send us a message or visit us in person."
+      />
+      <Section>
+        <div className="grid gap-8 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-start">
+          <Card
+            title="Send a message"
+            subtitle="Drop us a line and we’ll respond as soon as we can."
+          >
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input
+                  label="Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="Your name"
+                />
+                <Input
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="you@example.com"
+                />
+              </div>
+              <Textarea
+                label="Message"
+                rows={4}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                rows={4}
-                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 required
+                placeholder="Tell us how we can help…"
+                helper=""
               />
-            </label>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-1">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={submitted}
+                >
+                  {submitted ? "Message sent" : "Send message"}
+                </Button>
 
-            <div className="flex items-center justify-between gap-3 pt-2">
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-semibold hover:bg-neutral-800 transition disabled:opacity-60"
-                disabled={submitted}
-              >
-                {submitted ? 'Message sent' : 'Send message'}
-              </button>
+                {submitted && (
+                  <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-1">
+                    Demo only – your message was not actually sent, but the UI
+                    flow is working.
+                  </p>
+                )}
+              </div>
+            </form>
+          </Card>
 
-              {submitted && (
-                <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-1">
-                  This is a demo form – your message was not actually sent,
-                  but the UI flow works.
-                </p>
-              )}
-            </div>
-          </form>
-        </section>
+          {/* Shop details + map */}
+          <div className="space-y-4">
+            <Card title="Shop details">
+              <div className="space-y-3 text-sm text-neutral-700">
+                <div>
+                  <p className="font-medium text-neutral-900">
+                    BarberBooking Barbershop
+                  </p>
+                  <p>Sample Street 123</p>
+                  <p>40210 Düsseldorf</p>
+                </div>
 
-        {/* Contact details */}
-        <aside className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm space-y-4">
-          <h2 className="text-lg font-semibold text-neutral-900">
-            Shop details
-          </h2>
+                <div className="space-y-1">
+                  <p>
+                    Phone:{" "}
+                    <a
+                      href="tel:+490000000000"
+                      className="text-neutral-900 underline underline-offset-2"
+                    >
+                      +49 0000 000000
+                    </a>
+                  </p>
+                  <p>
+                    Email:{" "}
+                    <a
+                      href="mailto:info@example.com"
+                      className="text-neutral-900 underline underline-offset-2"
+                    >
+                      info@example.com
+                    </a>
+                  </p>
+                </div>
 
-          <div className="space-y-2 text-sm text-neutral-700">
-            <p className="font-medium">BarberBooking Barbershop</p>
-            <p>Sample Street 123</p>
-            <p>40210 Düsseldorf</p>
+                <div className="space-y-1">
+                  <p className="font-medium text-neutral-900">
+                    Walk-in & bookings
+                  </p>
+                  <p>
+                    We accept walk-ins when possible, but booking online is
+                    recommended to secure your slot.
+                  </p>
+                </div>
+              </div>
+            </Card>
+            <ContactMap/> 
           </div>
-
-          <div className="space-y-1 text-sm text-neutral-700">
-            <p>
-              Phone:{' '}
-              <a
-                href="tel:+490000000000"
-                className="text-neutral-900 underline underline-offset-2"
-              >
-                +49 0000 000000
-              </a>
-            </p>
-            <p>
-              Email:{' '}
-              <a
-                href="mailto:info@example.com"
-                className="text-neutral-900 underline underline-offset-2"
-              >
-                info@example.com
-              </a>
-            </p>
-          </div>
-
-          <div className="space-y-1 text-sm text-neutral-700">
-            <p className="font-medium">Walk-in & bookings</p>
-            <p>We accept walk-ins when possible, but booking online is recommended.</p>
-          </div>
-        </aside>
-      </div>
-    </section>
+        </div>
+      </Section>
+    </div>
   );
-}
+};
 
 export default ContactPage;

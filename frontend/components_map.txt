@@ -1,0 +1,60 @@
+src/components
+├── CalendarGrid.tsx
+├── Modal.tsx
+├── Navbar.tsx
+├── Spinner.tsx
+├── StatusBadge.tsx
+├── TimeField.tsx
+├── Toaster.tsx
+├── UserRoleBadge.tsx
+├── about
+│   ├── CTASection.tsx
+│   ├── Hero.tsx
+│   ├── InfoCard.tsx
+│   ├── OpeningHours.tsx
+│   ├── OurBarbers.tsx
+│   ├── OurStory.tsx
+│   ├── StepCard.tsx
+│   └── Steps.tsx
+├── admin
+│   ├── AdminBookingEditModal.tsx
+│   ├── AdminBookingsTable.tsx
+│   ├── AdminCalendarSkeleton.tsx
+│   ├── AdminPageLayout.tsx
+│   ├── AdminServicesTable.tsx
+│   ├── AdminTableSkeleton.tsx
+│   ├── PageHeader.tsx
+│   ├── barbers
+│   │   └── DeleteConflictPanel.tsx
+│   ├── bookings
+│   │   └── DayNavigator.tsx
+│   ├── modals
+│   │   └── ModalFooter.tsx
+│   ├── timeoff
+│   │   └── AdminTimeOffTable.tsx
+│   └── users
+│       └── AdminUsersTable.tsx
+├── booking
+│   ├── BookingCard.tsx
+│   ├── BookingSummaryDetails.tsx
+│   ├── BookingsStates.tsx
+│   ├── SlotGrid.tsx
+│   └── StatusBadge.tsx
+├── home
+│   ├── BarberCard.tsx
+│   ├── HomeSectionHelpers.tsx
+│   └── ServiceCard.tsx
+├── profile
+│   ├── ProfileForm.tsx
+│   ├── ProfileInfo.tsx
+│   └── ProfileSkeleton.tsx
+└── ui
+    ├── Button.tsx
+    ├── Checkbox.tsx
+    ├── FormGrid.tsx
+    ├── Input.tsx
+    ├── SectionCard.tsx
+    ├── Select.tsx
+    └── TableContainer.tsx
+
+12 directories, 46 files
