@@ -3,6 +3,7 @@ import {
   getServices,
   type Service as PublicService,
 } from "../../api/public";
+
 import ServiceCard from "./ServiceCard";
 import {
   CountBadge,
@@ -10,13 +11,17 @@ import {
   ErrorBox,
   EmptyBox,
 } from "./HomeSectionHelpers";
+
 import Section from "../ui/Section";
+import Pagination from "../ui/Pagination";
+import { useState } from "react";
 
 type Props = {
   role: "user" | "admin" | null;
+  perPage?: number; // <= configurable
 };
 
-const ServicesSection = ({ role }: Props) => {
+const ServicesSection = ({ role, perPage = 3 }: Props) => {
   const {
     data: services,
     isLoading,
@@ -26,11 +31,23 @@ const ServicesSection = ({ role }: Props) => {
     queryFn: getServices,
   });
 
+  const [page, setPage] = useState(1);
+
   const count = services?.length ?? 0;
 
+  const totalPages = Math.ceil(count / perPage);
+
+  const paginated =
+    services?.slice((page - 1) * perPage, page * perPage) ?? [];
+
   return (
-    <Section id="services" className="space-y-3 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">
-      <div className="flex items-end justify-between">
+    <Section
+      id="services"
+      className="space-y-6 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6"
+      data-aos="fade-up"
+    >
+      {/* HEADER */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-semibold text-yellow-500">
             Services
@@ -39,17 +56,24 @@ const ServicesSection = ({ role }: Props) => {
         </div>
       </div>
 
+      {/* LIST */}
       {isLoading && <ListSkeleton />}
-      {isError && (
-        <ErrorBox text="Couldn’t load services. Please retry." />
-      )}
+      {isError && <ErrorBox text="Couldn’t load services. Please retry." />}
 
       {services && services.length > 0 && (
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((s) => (
-            <ServiceCard key={s._id} service={s} role={role} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {paginated.map((s) => (
+              <ServiceCard key={s._id} service={s} role={role} />
+            ))}
+          </div>
+
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onChange={setPage}
+          />
+        </>
       )}
 
       {services && services.length === 0 && (

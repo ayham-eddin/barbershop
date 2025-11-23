@@ -1,7 +1,7 @@
-// src/components/admin/AdminBookingsTable.tsx
 import StatusBadge from "../StatusBadge";
 import AdminTableSkeleton from "./AdminTableSkeleton";
 import { formatBerlin } from "../../utils/datetime";
+import Pagination from "../ui/Pagination";
 
 export interface AdminBooking {
   _id: string;
@@ -61,9 +61,7 @@ const AdminBookingsTable = ({
     );
   }
 
-  if (isLoading) {
-    return <AdminTableSkeleton />;
-  }
+  if (isLoading) return <AdminTableSkeleton />;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
@@ -78,6 +76,7 @@ const AdminBookingsTable = ({
             <th className="px-4 py-3 text-right">Actions</th>
           </tr>
         </thead>
+
         <tbody>
           {bookings.map((b) => {
             const canEdit = b.status === "booked";
@@ -96,70 +95,68 @@ const AdminBookingsTable = ({
                 <td className="px-4 py-3 text-neutral-800">
                   {formatBerlin(b.startsAt)}
                 </td>
+
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
                     <span>{b.serviceName}</span>
                     {b.notes && (
                       <span
-                        title={b.notes}
                         className="text-xs text-neutral-500 truncate max-w-[180px]"
+                        title={b.notes}
                       >
                         📝 {b.notes}
                       </span>
                     )}
                   </div>
                 </td>
+
                 <td className="px-4 py-3 font-medium">
                   {b.barber?.name ?? "—"}
                 </td>
+
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
-                    <span className="font-medium">
-                      {b.user?.name ?? "—"}
-                    </span>
+                    <span className="font-medium">{b.user?.name ?? "—"}</span>
                     <span className="text-neutral-500 text-xs">
                       {b.user?.email ?? ""}
                     </span>
                   </div>
                 </td>
+
                 <td className="px-4 py-3">
                   <StatusBadge status={b.status} />
                 </td>
+
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => onEdit(b)}
                       disabled={!canEdit || isActing}
                       className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-                      title={
-                        canEdit
-                          ? "Edit booking"
-                          : "Only booked appointments can be edited"
-                      }
                     >
                       Edit
                     </button>
+
                     <button
                       disabled={!canCancel || isActing}
                       onClick={() => onCancel(b._id)}
                       className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-                      title="Cancel booking"
                     >
                       Cancel
                     </button>
+
                     <button
                       disabled={!canNoShow || isActing}
                       onClick={() => onNoShow(b._id)}
                       className="rounded-md border border-rose-300 text-rose-800 px-3 py-1.5 hover:bg-rose-50 disabled:opacity-50"
-                      title="Mark no-show (adds a warning; blocks at 2)"
                     >
                       No-Show
                     </button>
+
                     <button
                       disabled={!canComplete || isActing}
                       onClick={() => onComplete(b._id)}
                       className="rounded-md bg-neutral-900 text-white px-3 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-                      title="Mark as completed"
                     >
                       Complete
                     </button>
@@ -171,10 +168,7 @@ const AdminBookingsTable = ({
 
           {bookings.length === 0 && (
             <tr>
-              <td
-                colSpan={6}
-                className="px-4 py-8 text-center text-neutral-500"
-              >
+              <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
                 No bookings match your filters.
               </td>
             </tr>
@@ -183,28 +177,16 @@ const AdminBookingsTable = ({
       </table>
 
       {/* Pagination */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center px-4 py-3 border-t border-neutral-200 text-sm bg-neutral-50">
-        <div className="flex gap-2 w-full sm:w-auto">
-          <button
-            disabled={curPage <= 1}
-            onClick={() => onPageChange((p) => Math.max(1, p - 1))}
-            className="flex-1 sm:flex-none rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-          >
-            Prev
-          </button>
-          <button
-            disabled={curPage >= totalPages}
-            onClick={() => onPageChange((p) => p + 1)}
-            className="flex-1 sm:flex-none rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
-        <span className="text-neutral-600 text-center sm:text-right">
-          Page {curPage} / {totalPages}
-        </span>
-      </div>
+        <Pagination
+          page={curPage}
+          totalPages={totalPages}
+          onChange={(newPage) =>
+            onPageChange(() => newPage)
+          }
+          className="bg-neutral-900 border-t border-neutral-200"
+        />
     </div>
   );
-}
+};
+
 export default AdminBookingsTable;

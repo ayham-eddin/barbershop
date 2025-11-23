@@ -1,40 +1,42 @@
 // frontend/src/pages/DashboardPage.tsx
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getMyBookings,
   cancelBooking,
   rescheduleMyBooking,
   type Booking,
-} from '../api/bookings';
-import { getMe } from '../api/me';
-import { notify } from '../lib/notify';
-import Modal from '../components/Modal';
-import TimeField from '../components/TimeField';
-import BookingCard from '../components/booking/BookingCard';
-import { isActive, isPast } from '../utils/bookings';
+} from "../api/bookings";
+import { getMe } from "../api/me";
+import { notify } from "../lib/notify";
+import Modal from "../components/Modal";
+import TimeField from "../components/TimeField";
+import BookingCard from "../components/booking/BookingCard";
+import { isActive, isPast } from "../utils/bookings";
 import {
   BookingsSkeleton,
   ErrorBox,
   NoBookingsCard,
-} from '../components/booking/BookingsStates';
+} from "../components/booking/BookingsStates";
+import Section from "../components/ui/Section";
+import PageHeader from "../components/ui/PageHeader";
 
 const DashboardPage = () => {
   const qc = useQueryClient();
 
   // ✅ Fetch user info (warnings / block)
   const { data: me } = useQuery({
-    queryKey: ['me'],
+    queryKey: ["me"],
     queryFn: getMe,
     staleTime: 5 * 60 * 1000,
   });
 
   // ✅ Fetch bookings
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['me', 'bookings'],
+    queryKey: ["me", "bookings"],
     queryFn: getMyBookings,
     staleTime: 0,
-    refetchOnMount: 'always',
+    refetchOnMount: "always",
     refetchOnWindowFocus: false,
   });
 
@@ -42,45 +44,45 @@ const DashboardPage = () => {
   const cancelMut = useMutation({
     mutationFn: (id: string) => cancelBooking(id),
     onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: ['me', 'bookings'] });
+      await qc.cancelQueries({ queryKey: ["me", "bookings"] });
 
-      const prev = qc.getQueryData<Booking[]>(['me', 'bookings']);
+      const prev = qc.getQueryData<Booking[]>(["me", "bookings"]);
       if (prev) {
         qc.setQueryData<Booking[]>(
-          ['me', 'bookings'],
-          prev.map((b) => (b._id === id ? { ...b, status: 'cancelled' } : b)),
+          ["me", "bookings"],
+          prev.map((b) => (b._id === id ? { ...b, status: "cancelled" } : b))
         );
       }
       return { prev };
     },
-    onSuccess: () => notify.success('Booking cancelled.'),
+    onSuccess: () => notify.success("Booking cancelled."),
     onError: (err, _id, ctx) => {
-      if (ctx?.prev) qc.setQueryData(['me', 'bookings'], ctx.prev);
-      notify.apiError(err, 'Could not cancel booking.');
+      if (ctx?.prev) qc.setQueryData(["me", "bookings"], ctx.prev);
+      notify.apiError(err, "Could not cancel booking.");
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ['me', 'bookings'] });
+      qc.invalidateQueries({ queryKey: ["me", "bookings"] });
     },
   });
 
   // Reschedule modal state
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editStartsAtLocal, setEditStartsAtLocal] = useState<string>(''); // yyyy-MM-ddTHH:mm or ISO
+  const [editStartsAtLocal, setEditStartsAtLocal] = useState<string>(""); // yyyy-MM-ddTHH:mm or ISO
 
   const openReschedule = (b: Booking) => {
     setEditId(b._id);
 
     // prefill from current values (local datetime string)
     const d = new Date(b.startsAt);
-    const pad = (n: number) => String(n).padStart(2, '0');
+    const pad = (n: number) => String(n).padStart(2, "0");
     const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
-      d.getDate(),
+      d.getDate()
     )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
     setEditStartsAtLocal(local);
     setEditOpen(true);
-  }
+  };
 
   const rescheduleMut = useMutation({
     mutationFn: async () => {
@@ -96,124 +98,125 @@ const DashboardPage = () => {
       return rescheduleMyBooking(editId, patch);
     },
     onSuccess: () => {
-      notify.success('Booking rescheduled.');
+      notify.success("Booking rescheduled.");
       setEditOpen(false);
       setEditId(null);
       (async () => {
-        await qc.invalidateQueries({ queryKey: ['me', 'bookings'] });
+        await qc.invalidateQueries({ queryKey: ["me", "bookings"] });
       })().catch(() => {});
     },
     onError: (err) => {
-      notify.apiError(err, 'Could not reschedule this booking.');
+      notify.apiError(err, "Could not reschedule this booking.");
     },
   });
 
   const hasBookings = data && data.length > 0;
 
   return (
-    <section className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-neutral-900">My Bookings</h1>
-        <p className="text-sm text-neutral-600 mt-1">
-          View and manage your upcoming appointments.
-        </p>
-      </header>
+    <div className="space-y-10">
+      <PageHeader
+        title="My Bookings"
+        subtitle="View and manage your upcoming appointments."
+      />
+      <Section className="space-y-6 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-5">
+        {/* ⚠️ Warning or block banners */}
+        <WarningBanners me={me} />
 
-      {/* ⚠️ Warning or block banners */}
-      <WarningBanners me={me} />
+        {/* States */}
+        {isLoading && <BookingsSkeleton />}
 
-      {/* States */}
-      {isLoading && <BookingsSkeleton />}
+        {isError && <ErrorBox text="Couldn’t load bookings. Please refresh." />}
 
-      {isError && (
-        <ErrorBox text="Couldn’t load bookings. Please refresh." />
-      )}
+        {!isLoading && !isError && data && data.length === 0 && (
+          <NoBookingsCard />
+        )}
 
-      {!isLoading && !isError && data && data.length === 0 && (
-        <NoBookingsCard />
-      )}
-
-      {hasBookings && (
-        <div className="grid gap-4 md:grid-cols-2">
-          {data!
-            .slice()
-            .sort(
-              (a, b) =>
-                new Date(a.startsAt).getTime() -
-                new Date(b.startsAt).getTime(),
-            )
-            .map((b) => (
-              <BookingCard
-                key={b._id}
-                booking={b}
-                onCancel={() => cancelMut.mutate(b._id)}
-                onReschedule={() => openReschedule(b)}
-                cancelling={
-                  cancelMut.isPending && cancelMut.variables === b._id
-                }
-                canReschedule={isActive(b.status) && !isPast(b.startsAt)}
-              />
-            ))}
-        </div>
-      )}
-
-      {/* Reschedule Modal */}
-      <Modal
-        open={editOpen}
-        title="Reschedule booking"
-        onClose={() => setEditOpen(false)}
-        footer={
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setEditOpen(false)}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="edit-booking-form"
-              disabled={rescheduleMut.isPending}
-              className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-            >
-              {rescheduleMut.isPending ? 'Saving…' : 'Save changes'}
-            </button>
+        {hasBookings && (
+          <div className="grid gap-4 md:grid-cols-2">
+            {data!
+              .slice()
+              .sort(
+                (a, b) =>
+                  new Date(a.startsAt).getTime() -
+                  new Date(b.startsAt).getTime()
+              )
+              .map((b) => (
+                <BookingCard
+                  key={b._id}
+                  booking={b}
+                  onCancel={() => cancelMut.mutate(b._id)}
+                  onReschedule={() => openReschedule(b)}
+                  cancelling={
+                    cancelMut.isPending && cancelMut.variables === b._id
+                  }
+                  canReschedule={isActive(b.status) && !isPast(b.startsAt)}
+                />
+              ))}
           </div>
-        }
-      >
-        <form
-          id="edit-booking-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            rescheduleMut.mutate();
-          }}
-          className="space-y-3"
+        )}
+
+        {/* Reschedule Modal */}
+        <Modal
+          open={editOpen}
+          title="Reschedule booking"
+          onClose={() => setEditOpen(false)}
+          footer={
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditOpen(false)}
+                className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="edit-booking-form"
+                disabled={rescheduleMut.isPending}
+                className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
+              >
+                {rescheduleMut.isPending ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          }
         >
-          <TimeField
-            value={editStartsAtLocal}
-            onChange={(iso) => setEditStartsAtLocal(iso)}
-            label="Starts at"
-            required
-          />
-        </form>
-      </Modal>
-    </section>
+          <form
+            id="edit-booking-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              rescheduleMut.mutate();
+            }}
+            className="space-y-3"
+          >
+            <TimeField
+              value={editStartsAtLocal}
+              onChange={(iso) => setEditStartsAtLocal(iso)}
+              label="Starts at"
+              required
+            />
+          </form>
+        </Modal>
+      </Section>
+    </div>
   );
-}
+};
 
 export default DashboardPage;
 
 /* ---------------------------- Small helpers ---------------------------- */
 
-const WarningBanners = ({ me }: { me: Awaited<ReturnType<typeof getMe>> | undefined }) => {
+const WarningBanners = ({
+  me,
+}: {
+  me: Awaited<ReturnType<typeof getMe>> | undefined;
+}) => {
   if (!me) return null;
 
   if (me.is_online_booking_blocked) {
     return (
       <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
-        ⚠️ Your online booking is restricted due to repeated no-shows. Please call the
-        barbershop to book in person.
+        ⚠️ Your online booking is restricted due to repeated no-shows. Please
+        call the barbershop to book in person.
       </div>
     );
   }
@@ -221,11 +224,12 @@ const WarningBanners = ({ me }: { me: Awaited<ReturnType<typeof getMe>> | undefi
   const warnings = me.warning_count ?? 0;
   if (warnings > 0) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 px-4 py-3 text-sm">
-        ⚠️ You have {warnings} warning{warnings > 1 ? 's' : ''} for missed appointments.
-      </div>
+      <Section className="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 px-4 py-3 text-sm">
+        ⚠️ You have {warnings} warning{warnings > 1 ? "s" : ""} for missed
+        appointments.
+      </Section>
     );
   }
 
   return null;
-}
+};

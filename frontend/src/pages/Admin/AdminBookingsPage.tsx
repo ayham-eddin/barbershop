@@ -190,7 +190,7 @@ const AdminBookingsPage = () => {
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     params.set("page", String(page));
-    params.set("limit", "50"); // fetch enough for the view
+    params.set("limit", "10"); // fetch enough for the view
     if (status) params.set("status", status);
     if (barberId) params.set("barberId", barberId);
 
