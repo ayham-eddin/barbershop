@@ -1,4 +1,5 @@
 import { Scissors, Users, Clock, HeartHandshake } from "lucide-react";
+import Section from "../ui/Section";
 
 const items = [
   {
@@ -25,9 +26,9 @@ const items = [
 
 const OurStory = () => {
   return (
-    <section className="space-y-4" data-aos="fade-up">
-      <h2 className="text-2xl font-semibold text-neutral-900">Our Story</h2>
-      <p className="text-neutral-600 max-w-xl">
+    <Section className="space-y-3 text-center rounded-2xl bg-neutral-900 border border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">
+      <h2 className="text-2xl font-semibold text-white">Our Story</h2>
+      <p className="text-neutral-600 text-white text-sm max-w-xl mx-auto">
         We started with a simple idea: keep the classic barbershop feeling, but
         make booking as seamless as the cut.
       </p>
@@ -45,7 +46,7 @@ const OurStory = () => {
           </div>
         ))}
       </div>
-    </section>
+    </Section>
   );
 };
 

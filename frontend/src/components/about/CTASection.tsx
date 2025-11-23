@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import Button from "../ui/Button";
 
 const CTASection = () => (
   <section className="rounded-2xl bg-neutral-900 border border-amber-500/40 shadow-lg p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -12,18 +13,20 @@ const CTASection = () => (
     </div>
 
     <div className="flex gap-3 justify-center sm:justify-end">
-      <Link
-        to="/book"
-        className="rounded-lg bg-amber-400 text-neutral-900 px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition"
+      <Button
+        className="bg-yellow-500 font-semibold"
+        variant="secondary"
+        asChild
       >
-        Book Now
-      </Link>
-      <Link
-        to="/services"
-        className="rounded-lg border border-neutral-500 text-white px-4 py-2 text-sm font-semibold hover:bg-neutral-800 transition"
+        <Link to="/book">Book Now</Link>
+      </Button>
+      <Button
+        className="border border-yellow-500/70 font-semibold text-white hover:bg-yellow-500/50 hover:text-black"
+        variant="secondary"
+        asChild
       >
-        View Services
-      </Link>
+        <Link to="/services">View Services</Link>
+      </Button>
     </div>
   </section>
 );

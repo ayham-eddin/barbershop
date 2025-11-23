@@ -1,4 +1,4 @@
-// src/pages/AboutPage.tsx
+import Section from "../components/ui/Section";
 import Hero from "../components/about/Hero";
 import Steps from "../components/about/Steps";
 import OpeningHours from "../components/about/OpeningHours";
@@ -14,10 +14,10 @@ const AboutPage = () => {
       <Steps />
       <OurStory />
       <OurBarbers />
-      <div className="grid gap-6 md:grid-cols-2">
+      <Section className="grid gap-6 md:grid-cols-2 space-y-3 text-center rounded-2xl bg-neutral-900 border border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">
         <OpeningHours />
         <InfoCard />
-      </div>
+      </Section>
       <CTASection />
     </div>
   );

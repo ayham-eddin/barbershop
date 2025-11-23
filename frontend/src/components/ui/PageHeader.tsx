@@ -18,21 +18,21 @@ const PageHeader: React.FC<PageHeaderProps> = ({
   return (
     <header
       className={clsx(
-        "flex flex-col gap-3 md:flex-row md:items-center md:justify-between",
+        "flex flex-col gap-3 md:flex-row md:items-center md:justify-between rounded-2xl bg-neutral-900 border border-amber-500/40 shadow-lg p-6",
         className
       )}
     >
       <div>
         {eyebrow && (
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-neutral-500">
+          <p className="text-xs font-medium text-yellow-500 uppercase tracking-[0.16em]">
             {eyebrow}
           </p>
         )}
-        <h1 className="text-3xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="text-3xl font-semibold tracking-tight text-white">
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-2 max-w-2xl text-sm md:text-base text-neutral-600">
+          <p className="mt-2 max-w-2xl text-sm md:text-base text-white">
             {subtitle}
           </p>
         )}

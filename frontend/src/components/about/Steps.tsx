@@ -1,13 +1,15 @@
 import StepCard from "./StepCard";
+import Section from "../ui/Section";
 
 const Steps = () => {
   return (
-    <section className="space-y-3 text-center" data-aos="fade-up">
-      <h2 className="text-2xl font-semibold text-neutral-900">How It Works</h2>
-      <p className="text-neutral-600 text-sm max-w-xl mx-auto">
-        Three quick steps to get your next haircut or beard trim booked.
-      </p>
-
+    <Section className="space-y-3 text-center rounded-2xl bg-neutral-900 border border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">
+        <h2 className="text-2xl font-semibold text-white">
+          How It Works
+        </h2>
+        <p className="text-neutral-600 text-white text-sm max-w-xl mx-auto">
+          Three quick steps to get your next haircut or beard trim booked.
+        </p>      
       <div className="grid gap-4 sm:grid-cols-3 mt-6">
         <StepCard
           number={1}
@@ -25,7 +27,7 @@ const Steps = () => {
           text="Get instant confirmation and manage bookings online."
         />
       </div>
-    </section>
+    </Section>
   );
 };
 

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import Button from "../ui/Button";
+import Section from "../ui/Section";
 import about from "../../assets/about.jpeg";
 
 const Hero = () => {
@@ -15,8 +17,8 @@ const Hero = () => {
   }, []);
 
   return (
-    <section
-      className="relative rounded-3xl overflow-hidden shadow-xl"
+    <Section
+      className="relative rounded-3xl overflow-hidden shadow-xl border-2 border-amber-500/40"
       data-aos="fade-up"
     >
       <div className="relative h-[420px]">
@@ -53,23 +55,16 @@ const Hero = () => {
             data-aos-delay="350"
             className="flex gap-3 mt-6"
           >
-            <Link
-              to="/book"
-              className="rounded-lg bg-amber-400 text-neutral-900 font-semibold px-5 py-2 text-sm hover:bg-amber-300 transition"
-            >
-              Book Now
-            </Link>
-
-            <Link
-              to="/services"
-              className="rounded-lg border border-white/70 text-white font-semibold px-5 py-2 text-sm hover:bg-white/10 transition"
-            >
-              View Services
-            </Link>
+            <Button className="bg-yellow-500 font-semibold" variant="secondary" asChild>
+              <Link to="/book">Book Now</Link>
+            </Button>
+            <Button className="border border-yellow-500/70 font-semibold text-white hover:bg-yellow-500/50 hover:text-black" variant="secondary" asChild>
+              <Link to="/services">View Services</Link>
+            </Button>
           </div>
         </div>
       </div>
-    </section>
+    </Section>
   );
 };
 

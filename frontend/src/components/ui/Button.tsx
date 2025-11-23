@@ -42,10 +42,10 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <Comp
       className={clsx(
+        className,
         base,
         variantStyles[variant],
         sizeStyles[size],
-        className
       )}
       disabled={loading || disabled}
       {...props}

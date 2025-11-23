@@ -1,6 +1,7 @@
 import { getBarbers, type Barber } from "../../api/public";
 import { useQuery } from "@tanstack/react-query";
 import { ListSkeleton, ErrorBox } from "../home/HomeSectionHelpers";
+import Section from "../ui/Section";
 
 const OurBarbers = () => {
   const {
@@ -10,8 +11,8 @@ const OurBarbers = () => {
   } = useQuery<Barber[]>({ queryKey: ["barbers"], queryFn: getBarbers });
 
   return (
-    <section className="space-y-4" data-aos="fade-up">
-      <h2 className="text-2xl font-semibold text-neutral-900">
+    <Section className="space-y-3 text-center rounded-2xl bg-neutral-900 border border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">
+      <h2 className="text-2xl font-semibold text-white text-neutral-900">
         Meet Our Barbers
       </h2>
 
@@ -35,7 +36,7 @@ const OurBarbers = () => {
           ))}
         </div>
       )}
-    </section>
+    </Section>
   );
 };
 

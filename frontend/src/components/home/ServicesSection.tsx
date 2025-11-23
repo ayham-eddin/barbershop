@@ -10,7 +10,7 @@ import {
   ErrorBox,
   EmptyBox,
 } from "./HomeSectionHelpers";
-import SectionCard from "../ui/SectionCard";
+import Section from "../ui/Section";
 
 type Props = {
   role: "user" | "admin" | null;
@@ -29,7 +29,7 @@ const ServicesSection = ({ role }: Props) => {
   const count = services?.length ?? 0;
 
   return (
-    <section id="services" className="space-y-5" data-aos="fade-up">
+    <Section id="services" className="space-y-3 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">
       <div className="flex items-end justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-semibold text-yellow-500">
@@ -45,19 +45,17 @@ const ServicesSection = ({ role }: Props) => {
       )}
 
       {services && services.length > 0 && (
-        <SectionCard className="border border-white shadow-none p-0 bg-gradient-to-r from-black/100 via-black/90 to-black/80">
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {services.map((s) => (
-              <ServiceCard key={s._id} service={s} role={role} />
-            ))}
-          </div>
-        </SectionCard>
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {services.map((s) => (
+            <ServiceCard key={s._id} service={s} role={role} />
+          ))}
+        </div>
       )}
 
       {services && services.length === 0 && (
         <EmptyBox text="No services available yet." />
       )}
-    </section>
+    </Section>
   );
 };
 

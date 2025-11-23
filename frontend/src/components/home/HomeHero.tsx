@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import homeHero from "../../assets/home-hero.jpeg";
 import Button from "../ui/Button";
+import Section from "../ui/Section";
 
 type Props = {
   role: "user" | "admin" | null;
@@ -10,9 +11,10 @@ const HomeHero = ({ role }: Props) => {
   const isAdmin = role === "admin";
 
   return (
-    <section
-      className="relative overflow-hidden rounded-3xl bg-neutral-950 text-white shadow-xl border border-white"
+    <Section
+      className="relative overflow-hidden rounded-3xl bg-neutral-950 text-white shadow-xl border-2 border-amber-500/40 shadow-lg"
       data-aos="fade-up"
+      spaceY="0"
     >
       {/* Background image */}
       <img
@@ -44,7 +46,7 @@ const HomeHero = ({ role }: Props) => {
                 <Button className="bg-yellow-500" variant="secondary" asChild>
                   <Link to="/admin/bookings">Go to Admin Bookings</Link>
                 </Button>
-                <Button className="border border-yellow-500 text-white hover:bg-yellow-500 hover:text-black" variant="secondary" asChild>
+                <Button className="border border-yellow-500/50 text-white hover:bg-yellow-500/50 hover:text-black" variant="secondary" asChild>
                   <Link to="/admin/services">Manage Services</Link>
                 </Button>
               </>
@@ -78,7 +80,7 @@ const HomeHero = ({ role }: Props) => {
           </div>
         </div>
       </div>
-    </section>
+    </Section>
   );
 };
 
