@@ -4,7 +4,7 @@ import Section from "../ui/Section";
 const Steps = () => {
   return (
     <Section className="space-y-3 text-center rounded-2xl bg-neutral-900 border border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">
-        <h2 className="text-2xl font-semibold text-white">
+        <h2 className="text-2xl font-semibold text-yellow-500">
           How It Works
         </h2>
         <p className="text-neutral-600 text-white text-sm max-w-xl mx-auto">

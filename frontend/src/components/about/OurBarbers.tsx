@@ -12,7 +12,7 @@ const OurBarbers = () => {
 
   return (
     <Section className="space-y-3 text-center rounded-2xl bg-neutral-900 border border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">
-      <h2 className="text-2xl font-semibold text-white text-neutral-900">
+      <h2 className="text-2xl font-semibold text-yellow-500">
         Meet Our Barbers
       </h2>
 
