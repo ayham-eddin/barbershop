@@ -10,6 +10,8 @@ import {
   ProfileInfoItem,
   ProfileBookingStatus,
 } from "../components/profile/ProfileInfo";
+import Section from "../components/ui/Section";
+import PageHeader from "../components/ui/PageHeader";
 
 const ProfilePage = () => {
   const qc = useQueryClient();
@@ -76,14 +78,12 @@ const ProfilePage = () => {
     : null;
 
   return (
-    <section className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-neutral-900">My Profile</h1>
-        <p className="text-sm text-neutral-600 mt-1">
-          Update your personal information.
-        </p>
-      </header>
-
+    <div className="space-y-10">
+    <PageHeader
+        title="My Profile"
+        subtitle=" Update your personal information."
+      />
+    <Section className="space-y-3 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">      
       {isLoading && <ProfileSkeleton />}
 
       {isError && (
@@ -112,7 +112,8 @@ const ProfilePage = () => {
           </div>
         </div>
       )}
-    </section>
+    </Section>
+    </div>
   );
 }
 

@@ -28,7 +28,8 @@ const PageHeader: React.FC<PageHeaderProps> = ({
             {eyebrow}
           </p>
         )}
-        <h1 className="text-3xl font-semibold tracking-tight text-white">
+        <h1 className={clsx("text-3xl font-semibold tracking-tight text-white", className
+      )}>
           {title}
         </h1>
         {subtitle && (

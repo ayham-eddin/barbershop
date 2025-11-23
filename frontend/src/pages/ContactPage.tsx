@@ -27,7 +27,7 @@ const ContactPage = () => {
         subtitle="Questions about bookings, services, or anything else? Send us a message or visit us in person."
       />
       <Section>
-        <div className="grid gap-8 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-start">
+        <div className="space-y- rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 grid gap-8 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-start">
           <Card
             title="Send a message"
             subtitle="Drop us a line and we’ll respond as soon as we can."
