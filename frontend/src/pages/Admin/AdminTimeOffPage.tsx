@@ -18,8 +18,9 @@ import Select from "../../components/ui/Select";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import FormGrid from "../../components/ui/FormGrid";
-import PageHeader from "../../components/admin/PageHeader";
+import PageHeader from "../../components/ui/PageHeader";
 import AdminPageLayout from "../../components/admin/AdminPageLayout";
+import Section from "../../components/ui/Section";
 
 type Barber = { _id: string; name: string };
 
@@ -121,7 +122,7 @@ const AdminTimeOffPage = () => {
       if (prev) {
         qc.setQueryData<TimeOff[]>(
           ["admin-timeoff", selectedBarber || "all"],
-          prev.filter((t) => t._id !== id),
+          prev.filter((t) => t._id !== id)
         );
       }
 
@@ -129,10 +130,7 @@ const AdminTimeOffPage = () => {
     },
     onError: (err, _id, ctx) => {
       if (ctx?.prev)
-        qc.setQueryData(
-          ["admin-timeoff", selectedBarber || "all"],
-          ctx.prev,
-        );
+        qc.setQueryData(["admin-timeoff", selectedBarber || "all"], ctx.prev);
       toast.error(errorMessage(err));
     },
     onSuccess: () => toast.success("Time-off removed."),
@@ -146,74 +144,80 @@ const AdminTimeOffPage = () => {
     <AdminPageLayout>
       <PageHeader
         title="Time Off"
+        subtitle="manage the Barbers Hours working"
         onRefresh={() => timeoffQ.refetch()}
         loading={timeoffQ.isFetching}
+        actions={<></>}
       />
-
       {/* Create + Filter Form */}
-      <FormGrid columns={4} className="shadow-sm">
-        <Select
-          label="Barber"
-          value={selectedBarber}
-          onChange={(e) => setSelectedBarber(e.target.value)}
-        >
-          {(barbersQ.data ?? []).map((b) => (
-            <option key={b._id} value={b._id}>
-              {b.name}
-            </option>
-          ))}
-        </Select>
+      <Section
+        className="space-y-3 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4"
+        data-aos="fade-up"
+      >
+        <FormGrid columns={4} className="shadow-sm">
+          <Select
+            label="Barber"
+            value={selectedBarber}
+            onChange={(e) => setSelectedBarber(e.target.value)}
+          >
+            {(barbersQ.data ?? []).map((b) => (
+              <option key={b._id} value={b._id}>
+                {b.name}
+              </option>
+            ))}
+          </Select>
 
-        <Input
-          label="Start"
-          type="datetime-local"
-          value={form.start}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, start: e.target.value }))
-          }
-        />
+          <Input
+            label="Start"
+            type="datetime-local"
+            value={form.start}
+            onChange={(e) => setForm((f) => ({ ...f, start: e.target.value }))}
+          />
 
-        <Input
-          label="End"
-          type="datetime-local"
-          value={form.end}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, end: e.target.value }))
-          }
-        />
+          <Input
+            label="End"
+            type="datetime-local"
+            value={form.end}
+            onChange={(e) => setForm((f) => ({ ...f, end: e.target.value }))}
+          />
 
-        <Input
-          label="Reason (optional)"
-          value={form.reason}
-          maxLength={200}
-          placeholder="e.g., vacation"
-          onChange={(e) =>
-            setForm((f) => ({ ...f, reason: e.target.value }))
-          }
-        />
-      </FormGrid>
+          <Input
+            label="Reason (optional)"
+            value={form.reason}
+            maxLength={200}
+            placeholder="e.g., vacation"
+            onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
+          />
+        </FormGrid>
 
-      <div className="flex justify-end">
-        <Button
-          variant="primary"
-          className="mt-2"
-          loading={createMut.isPending}
-          disabled={!form.start || !form.end || !form.barberId}
-          onClick={() => createMut.mutate()}
-        >
-          Add time-off
-        </Button>
-      </div>
+        <div className="flex justify-end">
+          <Button
+            variant="normal"
+            size="full"
+            className="border-2 border-yellow-500 hover:border-yellow-300 text-neutral-800 bg-amber-400 text-neutral-900 hover:bg-amber-300"
+            loading={createMut.isPending}
+            disabled={!form.start || !form.end || !form.barberId}
+            onClick={() => createMut.mutate()}
+          >
+            Add time-off
+          </Button>
+        </div>
+      </Section>
 
       {/* Table */}
-      <AdminTimeOffTable
-        items={timeoffQ.data ?? []}
-        barberMap={barberMap}
-        isLoading={timeoffQ.isLoading}
-        isError={timeoffQ.isError ?? false}
-        isRemoving={delMut.isPending}
-        onRemove={(id) => delMut.mutate(id)}
-      />
+      <Section
+        className="space-y-3 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4"
+        data-aos="fade-up"
+      >
+        <AdminTimeOffTable
+          items={timeoffQ.data ?? []}
+          barberMap={barberMap}
+          isLoading={timeoffQ.isLoading}
+          isError={timeoffQ.isError ?? false}
+          isRemoving={delMut.isPending}
+          onRemove={(id) => delMut.mutate(id)}
+        />
+      </Section>
     </AdminPageLayout>
   );
 };

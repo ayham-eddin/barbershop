@@ -1,4 +1,5 @@
 import type { TimeOff } from "../../../api/timeoff";
+import Button from "../../ui/Button";
 interface AdminTimeOffTableProps {
   items: TimeOff[];
   barberMap: Map<string, string>;
@@ -25,7 +26,7 @@ const AdminTimeOffTable = ({
           Failed to load time-off.
         </div>
       ) : (
-        <table className="min-w-full text-sm text-left">
+        <table className="min-w-full text-sm text-left text-neutral-900">
           <thead className="bg-neutral-100 text-neutral-700 uppercase text-xs">
             <tr>
               <th className="px-4 py-3">Barber</th>
@@ -55,13 +56,13 @@ const AdminTimeOffTable = ({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end">
-                    <button
+                    <Button
+                      variant="danger"
+                      size="sm"
                       onClick={() => onRemove(t._id)}
-                      disabled={isRemoving}
-                      className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
-                    >
+                      disabled={isRemoving}                    >
                       {isRemoving ? "Removing…" : "Remove"}
-                    </button>
+                    </Button>
                   </div>
                 </td>
               </tr>

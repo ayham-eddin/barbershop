@@ -18,7 +18,7 @@ import AdminUsersTable, {
   type AdminUserRow,
 } from "../../components/admin/users/AdminUsersTable";
 import AdminPageLayout from "../../components/admin/AdminPageLayout";
-import PageHeader from "../../components/admin/PageHeader";
+import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
@@ -254,11 +254,12 @@ const AdminUsersPage = () => {
   return (
     <AdminPageLayout>
       <PageHeader
-        title="Users"
-        onRefresh={() => refetch()}
+        title="Manage Users"
+        subtitle="Users managed by the admin"
+        onRefresh={refetch}
         loading={isFetching}
+        actions={<></>}
       />
-
       <AdminUsersTable
         rows={rows}
         isLoading={isLoading}
