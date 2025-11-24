@@ -9,12 +9,13 @@ import DeleteConflictPanel, {
   type DeleteConflictState,
 } from "../../components/admin/barbers/DeleteConflictPanel";
 import AdminPageLayout from "../../components/admin/AdminPageLayout";
-import PageHeader from "../../components/admin/PageHeader";
+import PageHeader from "../../components/ui/PageHeader";
 import TableContainer from "../../components/ui/TableContainer";
 import ModalFooter from "../../components/admin/modals/ModalFooter";
 import Input from "../../components/ui/Input";
 import Checkbox from "../../components/ui/Checkbox";
 import Button from "../../components/ui/Button";
+import { Section } from "lucide-react";
 
 type WorkingHour = {
   day: number; // 0-6
@@ -62,7 +63,7 @@ const AdminBarbersPage = () => {
   const qc = useQueryClient();
 
   // ---- load list ----
-  const { data, isLoading, isError, refetch } = useQuery<AdminListResponse>({
+  const { data, isLoading, isError, refetch, isFetching} = useQuery<AdminListResponse>({
     queryKey: ["adminBarbers"],
     queryFn: async () => {
       const res = await api.get("/api/admin/barbers");
@@ -318,14 +319,15 @@ const AdminBarbersPage = () => {
     <AdminPageLayout>
       <PageHeader
         title="Manage Barbers"
-        onRefresh={() => refetch()}
-        loading={isLoading}
+        subtitle="barbers working at the business"
+        onRefresh={refetch}
+        loading={isFetching}
+        actions={<></>}
       />
-
       {/* Create form (using shared UI components) */}
       <form
         onSubmit={onSubmitCreate}
-        className="bg-white border border-neutral-200 rounded-xl p-4"
+        className="bg-white border border-neutral-200 rounded-xl p-4 text-neutral-900"
       >
         <div className="grid gap-3 sm:grid-cols-4">
           <Input
@@ -352,8 +354,10 @@ const AdminBarbersPage = () => {
           <div className="flex items-center">
             <Button
               type="submit"
+              variant="normal"
+              size="full"
               loading={createMut.isPending}
-              className="w-full sm:w-auto bg-amber-400 text-neutral-900 hover:bg-amber-300"
+              className="bg-amber-400 text-neutral-900 hover:bg-amber-300"
             >
               {createMut.isPending ? "Adding…" : "Add Barber"}
             </Button>
@@ -362,12 +366,12 @@ const AdminBarbersPage = () => {
       </form>
 
       {isLoading && (
-        <div className="text-center text-neutral-500 py-12">Loading…</div>
+        <Section className="text-center text-neutral-500 py-12">Loading…</Section>
       )}
       {isError && (
-        <div className="text-center text-rose-600 bg-rose-50 border border-rose-200 rounded-lg py-4">
+        <Section className="text-center text-rose-600 bg-rose-50 border border-rose-200 rounded-lg py-4">
           Failed to load barbers.
-        </div>
+        </Section>
       )}
 
       {!isLoading && !isError && (
@@ -430,7 +434,13 @@ const AdminBarbersPage = () => {
                     </td>
                     <td className="px-4 py-3 space-x-2">
                       <Button
-                        variant="secondary"
+                        variant="normal"
+                        className= {
+                          b.active ? 
+                          "border-2 border-red-500 hover:border-red-300 text-neutral-800 hover:bg-neutral-100" 
+                          : 
+                          "border-2 border-green-500 hover:border-green-300 text-neutral-800 hover:bg-neutral-100"
+                        }
                         size="sm"
                         onClick={() =>
                           updateMut.mutate({
@@ -447,6 +457,8 @@ const AdminBarbersPage = () => {
                         variant="secondary"
                         size="sm"
                         onClick={() => openEdit(b)}
+                        className="bg-neutral-200 text-black border border-amber-400 hover:bg-amber-100"
+                        disabled={deleteMut.isPending}
                       >
                         Edit
                       </Button>

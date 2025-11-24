@@ -1,3 +1,6 @@
+import { Section } from "lucide-react";
+import Button from "../ui/Button";
+
 export type Service = {
   _id: string;
   name: string;
@@ -11,6 +14,7 @@ interface AdminServicesTableProps {
   isError: boolean;
   onEdit: (service: Service) => void;
   onBumpPrice: (service: Service) => void;
+  onDPrice: (service: Service) => void;
   onDelete: (id: string) => void;
   isUpdating: boolean;
   isDeleting: boolean;
@@ -22,28 +26,29 @@ const AdminServicesTable = ({
   isError,
   onEdit,
   onBumpPrice,
+  onDPrice,
   onDelete,
   isUpdating,
   isDeleting,
 }: AdminServicesTableProps) => {
   if (isLoading) {
     return (
-      <div className="text-center text-neutral-500 py-12">
+      <Section className="text-center text-neutral-500 py-12">
         Loading…
-      </div>
+      </Section>
     );
   }
 
   if (isError) {
     return (
-      <div className="text-center text-rose-600 bg-rose-50 border border-rose-200 rounded-lg py-4">
+      <Section className="text-center text-rose-600 bg-rose-50 border border-rose-200 rounded-lg py-4">
         Failed to load services.
-      </div>
+      </Section>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+    <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white text-neutral-900 shadow-sm">
       <table className="min-w-full text-sm text-left">
         <thead className="bg-neutral-100 text-neutral-700 uppercase text-xs">
           <tr>
@@ -60,27 +65,40 @@ const AdminServicesTable = ({
               <td className="px-4 py-3">{s.durationMin} min</td>
               <td className="px-4 py-3">€{s.price}</td>
               <td className="px-4 py-3 space-x-2">
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => onEdit(s)}
-                  className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+                  className="bg-neutral-200 text-black border border-amber-400 hover:bg-amber-100"
                 >
                   Edit
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="normal"
                   onClick={() => onBumpPrice(s)}
-                  className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+                  className="border-2 border-green-500 hover:border-green-300 text-neutral-800 hover:bg-neutral-100"
                   disabled={isUpdating}
                   title="+€1"
                 >
                   +€1
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="normal"
+                  onClick={() => onDPrice(s)}
+                  className="border-2 border-red-500 hover:border-red-300 text-neutral-800 hover:bg-neutral-100"
+                  disabled={isUpdating}
+                  title="-€1"
+                >
+                  -€1
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
                   onClick={() => onDelete(s._id)}
-                  className="rounded-md border border-rose-300 text-rose-700 px-3 py-1.5 hover:bg-rose-50"
                   disabled={isDeleting}
                 >
                   Delete
-                </button>
+                </Button>
               </td>
             </tr>
           ))}

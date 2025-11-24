@@ -19,7 +19,6 @@ import AdminBookingEditModal from "../../components/admin/AdminBookingEditModal"
 import AdminCalendarSkeleton from "../../components/admin/AdminCalendarSkeleton";
 import AdminBookingsTable from "../../components/admin/AdminBookingsTable";
 import AdminPageLayout from "../../components/admin/AdminPageLayout";
-// import PageHeader from "../../components/admin/PageHeader";
 import PageHeader from "../../components/ui/PageHeader";
 import FormGrid from "../../components/ui/FormGrid";
 import Input from "../../components/ui/Input";

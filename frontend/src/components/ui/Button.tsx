@@ -3,7 +3,7 @@ import { Slot } from "@radix-ui/react-slot";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "danger" | "subtle" | "normal";
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "full";
   loading?: boolean;
   asChild?: boolean;
 }
@@ -27,9 +27,9 @@ const Button: React.FC<ButtonProps> = ({
     primary:
       "bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-50",
     secondary:
-      "border border-neutral-300 text-neutral-800 hover:bg-neutral-100 disabled:opacity-50",
+      "border-2 border-neutral-300 text-neutral-800 hover:bg-neutral-100 disabled:opacity-50",
     danger:
-      "border border-rose-300 text-rose-700 hover:bg-rose-50 disabled:opacity-50",
+      "border-2 border-rose-300 text-rose-700 hover:bg-rose-50 disabled:opacity-50",
     subtle: 
       "text-neutral-700 hover:text-neutral-900 disabled:opacity-40",
     normal: 
@@ -39,6 +39,7 @@ const Button: React.FC<ButtonProps> = ({
   const sizeStyles = {
     sm: "px-3 py-1.5 text-sm",
     md: "px-4 py-2 text-sm",
+    full: "px-12 py-2 text-sm w-full sm:w-auto",
   };
 
   return (

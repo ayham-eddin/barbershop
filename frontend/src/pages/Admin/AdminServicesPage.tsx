@@ -9,7 +9,7 @@ import AdminServicesTable, {
 } from "../../components/admin/AdminServicesTable";
 import { extractErrorMessage } from "../../utils/httpErrors";
 import AdminPageLayout from "../../components/admin/AdminPageLayout";
-import PageHeader from "../../components/admin/PageHeader";
+import PageHeader from "../../components/ui/PageHeader";
 import FormGrid from "../../components/ui/FormGrid";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
@@ -21,7 +21,7 @@ const AdminServicesPage = () => {
   const qc = useQueryClient();
 
   // ---- load list ----
-  const { data, isLoading, isError, refetch } = useQuery<AdminListResponse>({
+  const { data, isLoading, isError, refetch, isFetching} = useQuery<AdminListResponse>({
     queryKey: ["adminServices"],
     queryFn: async () => {
       const res = await api.get("/api/admin/services");
@@ -147,13 +147,15 @@ const AdminServicesPage = () => {
     <AdminPageLayout>
       <PageHeader
         title="Manage Services"
-        onRefresh={() => refetch()}
-        loading={isLoading}
+        subtitle="services offered by the business"
+        onRefresh={refetch}
+        loading={isFetching}
+        actions={<></>}
       />
 
       {/* Create form using shared UI components */}
       <form onSubmit={onSubmitCreate}>
-        <FormGrid columns={4}>
+        <FormGrid columns={4} className="text-neutral-900">
           <Input
             placeholder="Service name"
             value={name}
@@ -197,6 +199,12 @@ const AdminServicesPage = () => {
           updateMut.mutate({
             id: s._id,
             patch: { price: Math.max(0, s.price + 1) },
+          })
+        }
+        onDPrice={(s) =>
+          updateMut.mutate({
+            id: s._id,
+            patch: { price: Math.max(0, s.price - 1) },
           })
         }
         onDelete={(id) => deleteMut.mutate(id)}
