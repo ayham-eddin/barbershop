@@ -35,11 +35,11 @@ export type CalendarGridProps = {
 
 const minutesBetween = (a: Date, b: Date): number => {
   return Math.max(0, Math.round((b.getTime() - a.getTime()) / 60000));
-}
+};
 
 const clamp = (n: number, min: number, max: number) => {
   return Math.max(min, Math.min(max, n));
-}
+};
 
 const isSameDay = (a: Date, b: Date) => {
   return (
@@ -47,13 +47,13 @@ const isSameDay = (a: Date, b: Date) => {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
   );
-}
+};
 
 /**
  * A simple day-view time grid. Each minute equals 1px for clarity.
  * (So a 10-hour window renders at 600px height.)
  */
-const CalendarGrid =({
+const CalendarGrid = ({
   bookings,
   startDate,
   endDate,
@@ -90,7 +90,7 @@ const CalendarGrid =({
       return {
         ev,
         topPx: topMin * pxPerMin,
-        heightPx: heightMin * pxPerMin,
+        heightPx: heightMin * pxPerMin + 9,
       };
     });
   }, [bookings, startDate, totalMinutes]);
@@ -117,7 +117,7 @@ const CalendarGrid =({
     <div className="w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
-        <div className="text-lg font-semibold text-neutral-900">
+        <div className="text-lg font-semibold text-white">
           {startDate.toLocaleDateString(undefined, {
             weekday: "long",
             year: "numeric",
@@ -125,15 +125,13 @@ const CalendarGrid =({
             day: "numeric",
           })}
         </div>
-        <div className="text-right text-sm text-neutral-600">
+        <div className="text-right text-sm text-white">
           <div>
             {String(workingHours.startHour).padStart(2, "0")}:00 —{" "}
             {String(workingHours.endHour).padStart(2, "0")}:00
           </div>
           {subtitle && (
-            <div className="mt-0.5 text-xs text-neutral-500">
-              {subtitle}
-            </div>
+            <div className="mt-0.5 text-xs text-yellow-500">{subtitle}</div>
           )}
         </div>
       </div>
@@ -193,24 +191,27 @@ const CalendarGrid =({
             <button
               key={ev.id}
               type="button"
-              className={`absolute left-2 right-2 rounded-lg border shadow-sm text-left px-3 py-2 hover:brightness-95 transition ${cls}`}
+              className={`absolute text-neutral-800 left-2 right-2 rounded-lg border shadow-sm text-left px-3 py-2 hover:brightness-95 transition ${cls}`}
               style={{ top: topPx, height: heightPx }}
               onClick={(e) => {
                 e.stopPropagation();
                 if (onEventClick) onEventClick(ev);
               }}
             >
-              <div className="text-sm font-medium truncate">{ev.label}</div>
-              <div className="text-[11px] text-neutral-500">
-                {ev.start.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}{" "}
-                —{" "}
-                {ev.end.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+              <div className="flex items-center justify-between gap-2 w-full text-sm">
+                <span className="font-medium truncate">{ev.label}</span>
+
+                <span className="text-[11px] text-neutral-500 shrink-0">
+                  {ev.start.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  —{" "}
+                  {ev.end.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
               </div>
             </button>
           );
@@ -218,5 +219,5 @@ const CalendarGrid =({
       </div>
     </div>
   );
-}
+};
 export default CalendarGrid;

@@ -19,11 +19,13 @@ import AdminBookingEditModal from "../../components/admin/AdminBookingEditModal"
 import AdminCalendarSkeleton from "../../components/admin/AdminCalendarSkeleton";
 import AdminBookingsTable from "../../components/admin/AdminBookingsTable";
 import AdminPageLayout from "../../components/admin/AdminPageLayout";
-import PageHeader from "../../components/admin/PageHeader";
+// import PageHeader from "../../components/admin/PageHeader";
+import PageHeader from "../../components/ui/PageHeader";
 import FormGrid from "../../components/ui/FormGrid";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
 import Button from "../../components/ui/Button";
+import Section from "../../components/ui/Section";
 
 /* ----------------------------- Types ----------------------------- */
 interface AdminBooking {
@@ -393,189 +395,226 @@ const AdminBookingsPage = () => {
 
   return (
     <AdminPageLayout>
-      <PageHeader title="Bookings" onRefresh={refetch} loading={isFetching} />
-
-      {/* View toggles */}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => setShowCalendar((v) => !v)}
-        >
-          {showCalendar ? "Hide day view" : "Show day view"}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => setShowRangeFilters((v) => !v)}
-        >
-          {showRangeFilters ? "Hide list range" : "Show list range"}
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Contact & Location"
+        title="Bookings Management"
+        subtitle="View and manage all bookings made in the system."
+        loading={isFetching}
+        onRefresh={refetch}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button
+              className="bg-yellow-500"
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowCalendar((v) => !v)}
+            >
+              {showCalendar ? "Hide day view" : "Show day view"}
+            </Button>
+            <Button
+              className="bg-yellow-500"
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowRangeFilters((v) => !v)}
+            >
+              {showRangeFilters ? "Hide list range" : "Show list range"}
+            </Button>
+          </div>
+        }
+      />
 
       {/* Top filters */}
-      <FormGrid columns={6}>
-        <Select
-          label="Status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="">All statuses</option>
-          <option value="booked">Booked</option>
-          <option value="rescheduled">Rescheduled</option>
-          <option value="no_show">No-Show</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="completed">Completed</option>
-        </Select>
-
-        <Select
-          label="Barber"
-          value={barberId}
-          onChange={(e) => setBarberId(e.target.value)}
-        >
-          <option value="">All barbers</option>
-          {barbers.map((b) => (
-            <option key={b._id} value={b._id}>
-              {b.name}
-            </option>
-          ))}
-        </Select>
-
-        {/* Day controls (calendar view) */}
-        <div className="col-span-2 flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setViewDateAndSync(addDays(viewDate, -1))}
-            title="Previous day"
+      <Section
+        className="space-y-3 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4"
+        data-aos="fade-up"
+      >
+        <h1 className="text-lg font-semibold text-white">
+          filters
+        </h1>
+        <FormGrid columns={6}>
+          <Select
+            label="Status"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
           >
-            ←
-          </Button>
+            <option value="">All statuses</option>
+            <option value="booked">Booked</option>
+            <option value="rescheduled">Rescheduled</option>
+            <option value="no_show">No-Show</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="completed">Completed</option>
+          </Select>
+
+          <Select
+            label="Barber"
+            value={barberId}
+            onChange={(e) => setBarberId(e.target.value)}
+          >
+            <option value="">All barbers</option>
+            {barbers.map((b) => (
+              <option key={b._id} value={b._id}>
+                {b.name}
+              </option>
+            ))}
+          </Select>
+
+          {/* Day controls (calendar view) */}
+          <div className="col-span-2 flex flex-wrap items-center text-neutral-800 gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setViewDateAndSync(addDays(viewDate, -1))}
+              title="Previous day"
+            >
+              ←
+            </Button>
+            <Input
+              type="date"
+              value={ymd(viewDate)}
+              onChange={(e) => {
+                const d = e.target.value
+                  ? new Date(e.target.value)
+                  : new Date();
+                setViewDateAndSync(d);
+              }}
+              className="flex-1 min-w-[120px]"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setViewDateAndSync(new Date())}
+              title="Today"
+              disabled={isToday}
+            >
+              Today
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setViewDateAndSync(addDays(viewDate, +1))}
+              title="Next day"
+            >
+              →
+            </Button>
+          </div>
+
           <Input
-            type="date"
-            value={ymd(viewDate)}
-            onChange={(e) => {
-              const d = e.target.value ? new Date(e.target.value) : new Date();
-              setViewDateAndSync(d);
-            }}
-            className="flex-1 min-w-[120px]"
+            label="Search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Customer name or email"
           />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setViewDateAndSync(new Date())}
-            title="Today"
-            disabled={isToday}
-          >
-            Today
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setViewDateAndSync(addDays(viewDate, +1))}
-            title="Next day"
-          >
-            →
-          </Button>
-        </div>
 
-        <Input
-          label="Search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Customer name or email"
-        />
-
-        <div className="flex items-end">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              const todayDate = new Date();
-              setStatus("");
-              setBarberId("");
-              setQ("");
-              setViewDateAndSync(todayDate);
-            }}
-          >
-            Reset
-          </Button>
-        </div>
-      </FormGrid>
+          <div className="flex items-end">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                const todayDate = new Date();
+                setStatus("");
+                setBarberId("");
+                setQ("");
+                setViewDateAndSync(todayDate);
+              }}
+            >
+              Reset
+            </Button>
+          </div>
+        </FormGrid>
+      </Section>
 
       {/* List range controls */}
       {showRangeFilters && (
-        <FormGrid columns={3} className="text-xs text-neutral-700">
-          <div className="flex flex-col gap-1">
-            <span className="font-medium">From (list range)</span>
-            <Input
-              type="date"
-              value={ymd(listFrom)}
-              onChange={(e) => {
-                const d = e.target.value
-                  ? new Date(e.target.value)
-                  : new Date();
-                if (d > listTo) {
-                  setListFrom(d);
-                  setListTo(d);
-                } else {
-                  setListFrom(d);
-                }
-              }}
-            />
-          </div>
+        <Section
+          className="space-y-3 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4"
+          data-aos="fade-up"
+        >
+          <h1 className="text-lg font-semibold text-white">
+            List range controls
+          </h1>
+          <FormGrid columns={3} className="text-xs text-neutral-700">
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">From (list range)</span>
+              <Input
+                type="date"
+                value={ymd(listFrom)}
+                onChange={(e) => {
+                  const d = e.target.value
+                    ? new Date(e.target.value)
+                    : new Date();
+                  if (d > listTo) {
+                    setListFrom(d);
+                    setListTo(d);
+                  } else {
+                    setListFrom(d);
+                  }
+                }}
+              />
+            </div>
 
-          <div className="flex flex-col gap-1">
-            <span className="font-medium">To (list range)</span>
-            <Input
-              type="date"
-              value={ymd(listTo)}
-              onChange={(e) => {
-                const d = e.target.value
-                  ? new Date(e.target.value)
-                  : new Date();
-                if (d < listFrom) {
-                  setListFrom(d);
-                  setListTo(d);
-                } else {
-                  setListTo(d);
-                }
-              }}
-            />
-          </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">To (list range)</span>
+              <Input
+                type="date"
+                value={ymd(listTo)}
+                onChange={(e) => {
+                  const d = e.target.value
+                    ? new Date(e.target.value)
+                    : new Date();
+                  if (d < listFrom) {
+                    setListFrom(d);
+                    setListTo(d);
+                  } else {
+                    setListTo(d);
+                  }
+                }}
+              />
+            </div>
 
-          <p className="self-center md:text-left text-center text-[11px] text-neutral-500">
-            This range controls which bookings appear in the table below (and in
-            the optional day view, as long as the selected day falls within the
-            range).
-          </p>
-        </FormGrid>
+            <p className="self-center md:text-left text-center text-[11px] text-neutral-500">
+              This range controls which bookings appear in the table below (and
+              in the optional day view, as long as the selected day falls within
+              the range).
+            </p>
+          </FormGrid>
+        </Section>
       )}
 
       {/* Table + pagination */}
-      <AdminBookingsTable
-        bookings={bookings}
-        isLoading={isLoading}
-        isError={isError}
-        isActing={isActing}
-        curPage={curPage}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        onEdit={(b) => openEdit(b)}
-        onCancel={(id) => cancelMutation.mutate(id)}
-        onNoShow={(id) => noShowMutation.mutate(id)}
-        onComplete={(id) => completeMutation.mutate(id)}
-      />
+      <Section
+        className="space-y-3 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4"
+        data-aos="fade-up"
+      >
+        <h1 className="text-lg font-semibold text-white">
+          Bookings Table
+        </h1>
+        <AdminBookingsTable
+          bookings={bookings}
+          isLoading={isLoading}
+          isError={isError}
+          isActing={isActing}
+          curPage={curPage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onEdit={(b) => openEdit(b)}
+          onCancel={(id) => cancelMutation.mutate(id)}
+          onNoShow={(id) => noShowMutation.mutate(id)}
+          onComplete={(id) => completeMutation.mutate(id)}
+        />
+      </Section>
 
       {/* Optional day view calendar */}
       {showCalendar && (
-        <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
+        <Section
+          className="space-y-3 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4"
+          data-aos="fade-up"
+        >
           {isLoading ? (
             <AdminCalendarSkeleton />
           ) : (
@@ -627,7 +666,7 @@ const AdminBookingsPage = () => {
               }}
             />
           )}
-        </div>
+        </Section>
       )}
 
       {/* Edit Modal */}

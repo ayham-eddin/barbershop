@@ -89,7 +89,7 @@ const LoginPage = ({ onLogin }: LoginPageProps) => {
             </label>
             <input
               type="text"
-              className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="mt-1 w-full text-neutral-800 rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -103,7 +103,7 @@ const LoginPage = ({ onLogin }: LoginPageProps) => {
           </label>
           <input
             type="email"
-            className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="mt-1 w-full text-neutral-800 rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
@@ -117,7 +117,7 @@ const LoginPage = ({ onLogin }: LoginPageProps) => {
           </label>
           <input
             type="password"
-            className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="mt-1 w-full text-neutral-800 rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete={mode === "login" ? "current-password" : "new-password"}

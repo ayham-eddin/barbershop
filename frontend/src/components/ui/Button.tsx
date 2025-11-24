@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { Slot } from "@radix-ui/react-slot";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "subtle";
+  variant?: "primary" | "secondary" | "danger" | "subtle" | "normal";
   size?: "sm" | "md";
   loading?: boolean;
   asChild?: boolean;
@@ -32,6 +32,8 @@ const Button: React.FC<ButtonProps> = ({
       "border border-rose-300 text-rose-700 hover:bg-rose-50 disabled:opacity-50",
     subtle: 
       "text-neutral-700 hover:text-neutral-900 disabled:opacity-40",
+    normal: 
+      "disabled:opacity-50",
   };
 
   const sizeStyles = {

@@ -2,7 +2,7 @@ import StatusBadge from "../StatusBadge";
 import AdminTableSkeleton from "./AdminTableSkeleton";
 import { formatBerlin } from "../../utils/datetime";
 import Pagination from "../ui/Pagination";
-
+import Button from "../ui/Button";
 export interface AdminBooking {
   _id: string;
   serviceName: string;
@@ -90,18 +90,18 @@ const AdminBookingsTable = ({
             return (
               <tr
                 key={b._id}
-                className="border-t border-neutral-100 hover:bg-neutral-50 transition"
+                className="border-t border-neutral-100 text-neutral-800 hover:bg-neutral-50 transition"
               >
                 <td className="px-4 py-3 text-neutral-800">
                   {formatBerlin(b.startsAt)}
                 </td>
 
                 <td className="px-4 py-3">
-                  <div className="flex flex-col">
+                  <div className="flex flex-col text-neutral-800">
                     <span>{b.serviceName}</span>
                     {b.notes && (
                       <span
-                        className="text-xs text-neutral-500 truncate max-w-[180px]"
+                        className="text-xs text-neutral-800 truncate max-w-[180px]"
                         title={b.notes}
                       >
                         📝 {b.notes}
@@ -128,38 +128,43 @@ const AdminBookingsTable = ({
                 </td>
 
                 <td className="px-4 py-3">
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => onEdit(b)}
+                  <div className="flex justify-end gap-1.5">
+                    <Button
+                      size="sm"
                       disabled={!canEdit || isActing}
-                      className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
+                      variant="normal"
+                      className="bg-neutral-200 text-black border border-amber-400 hover:bg-amber-100"
+                      onClick={() => onEdit(b)}
                     >
                       Edit
-                    </button>
-
-                    <button
+                    </Button>
+                    <Button
                       disabled={!canCancel || isActing}
                       onClick={() => onCancel(b._id)}
-                      className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100 disabled:opacity-50"
+                      size="sm"
+                      variant="secondary"
+                      className="rounded-md border border-neutral-300 text-neutral-700 hover:bg-neutral-100 disabled:opacity-50"
                     >
                       Cancel
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       disabled={!canNoShow || isActing}
                       onClick={() => onNoShow(b._id)}
-                      className="rounded-md border border-rose-300 text-rose-800 px-3 py-1.5 hover:bg-rose-50 disabled:opacity-50"
+                      size="sm"
+                      variant="danger"
                     >
                       No-Show
-                    </button>
-
-                    <button
-                      disabled={!canComplete || isActing}
-                      onClick={() => onComplete(b._id)}
-                      className="rounded-md bg-neutral-900 text-white px-3 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
-                    >
-                      Complete
-                    </button>
+                    </Button>
+                  <Button
+                    size="sm"
+                    disabled={!canComplete || isActing}
+                    variant="primary"
+                    className="bg-neutral-900 hover:bg-neutral-700"
+                    onClick={() => onComplete(b._id)}
+                  >
+                    Complete
+                  </Button>
                   </div>
                 </td>
               </tr>
@@ -177,14 +182,12 @@ const AdminBookingsTable = ({
       </table>
 
       {/* Pagination */}
-        <Pagination
-          page={curPage}
-          totalPages={totalPages}
-          onChange={(newPage) =>
-            onPageChange(() => newPage)
-          }
-          className="bg-neutral-900 border-t border-neutral-200"
-        />
+      <Pagination
+        page={curPage}
+        totalPages={totalPages}
+        onChange={(newPage) => onPageChange(() => newPage)}
+        className="bg-neutral-900 border-t border-neutral-200"
+      />
     </div>
   );
 };

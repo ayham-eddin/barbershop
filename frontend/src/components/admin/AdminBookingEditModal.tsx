@@ -1,5 +1,6 @@
 import Modal from "../Modal";
 import TimeField from "../TimeField";
+import Button from "../ui/Button";
 
 export type BarberOption = {
   _id: string;
@@ -73,21 +74,19 @@ const AdminBookingEditModal = ({
       onClose={onClose}
       footer={
         <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
+          <Button
             onClick={onClose}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+            variant="secondary"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             form="edit-admin-booking-form"
             disabled={isSubmitting}
-            className="rounded-md bg-neutral-900 text-white px-4 py-1.5 hover:bg-neutral-800 disabled:opacity-50"
           >
             {isSubmitting ? "Saving…" : "Save changes"}
-          </button>
+          </Button>
         </div>
       }
     >

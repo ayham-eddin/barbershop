@@ -1,5 +1,5 @@
-// src/components/Modal.tsx
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import Button from './ui/Button';
 
 interface ModalProps {
   open: boolean;
@@ -112,12 +112,12 @@ const Modal = ({ open, title, onClose, children, footer }: ModalProps) => {
 
         <div className="px-5 py-3 border-t border-neutral-200 flex justify-end gap-2">
           {footer ?? (
-            <button
+            <Button
               onClick={onClose}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 hover:bg-neutral-100"
+              variant='secondary'
             >
               Close
-            </button>
+            </Button>
           )}
         </div>
       </div>
