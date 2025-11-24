@@ -20,6 +20,7 @@ import AdminBarbersPage from './pages/Admin/AdminBarbersPage';
 import ProfilePage from './pages/ProfilePage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
+import Footer from './components/Footer';
 
 type Role = 'user' | 'admin' | null;
 
@@ -187,10 +188,8 @@ const App = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-
-        <footer className="border-t border-neutral-200 mt-12 py-6 text-center text-sm text-neutral-500">
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex gap-4">
+        <Footer className='text-white bg-black'>
+          <div className="flex gap-4 text-white">
               <Link
                 to="/about"
                 className="hover:text-neutral-800 underline underline-offset-4 decoration-neutral-300"
@@ -208,8 +207,7 @@ const App = () => {
               © {new Date().getFullYear()} Ayham Eddin. Crafted with ✂️ and
               care.
             </p>
-          </div>
-        </footer>
+        </Footer>
       </div>
     </Router>
   );

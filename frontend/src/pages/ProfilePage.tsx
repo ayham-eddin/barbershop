@@ -83,7 +83,7 @@ const ProfilePage = () => {
         title="My Profile"
         subtitle=" Update your personal information."
       />
-    <Section className="space-y-3 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">      
+    <Section className="space-y-3 text-neutral-900 rounded-2xl bg-neutral-900 border-2 border-amber-500/40 shadow-lg p-6 sm:flex-row sm:items-center sm:justify-between gap-4" data-aos="fade-up">      
       {isLoading && <ProfileSkeleton />}
 
       {isError && (
@@ -93,7 +93,7 @@ const ProfilePage = () => {
       )}
 
       {data && initialValues && (
-        <div className="rounded-2xl bg-white border border-neutral-200 p-6 shadow-sm">
+        <div className="rounded-2xl bg-white border border-neutral-200 p-6 shadow-sm text-neutral-900">
           <ProfileForm
             initialValues={initialValues}
             isSubmitting={mut.isPending}
